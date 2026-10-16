@@ -9,6 +9,7 @@ import com.example.identity.contract.tool_api.ToolId
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
 import com.example.identity.core.orchestrator.domain.journey.Transition
+import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.core.orchestrator.domain.journey.toEnrollAbortMessage
 import com.example.identity.core.orchestrator.domain.journey.state.AuthChoice
 import com.example.identity.core.orchestrator.domain.journey.state.Enrolling
@@ -36,9 +37,12 @@ class PathToRequiredLevel(private val afterIdentificationBackTo: ToolFreeState) 
      * in [offerNewMethod].
      */
     fun nextAfterEnrollment(ctx: JourneyContext, identifyBeforeEnrolling: Boolean = true, emailObligation: Boolean = false): Transition {
-        if (ctx canReach ctx.acrFloor && ctx hasReached ctx.acrFloor) return Transition.Authenticated
+        if (isReached(ctx)) return Transition.Authenticated
         return offerNewMethod(ctx, identifyBeforeEnrolling, emailObligation)
     }
+
+    /** The session has reached the level, and the account can reach it again on its own. */
+    fun isReached(ctx: JourneyContext): Boolean = ctx canReach ctx.acrFloor && ctx hasReached ctx.acrFloor
 
     /** The account's methods without the [declined] ones, or [otherwise] when none is left (or there is no account yet). */
     fun nextWithoutOr(declined: Set<ToolId>, ctx: JourneyContext, otherwise: () -> Transition): Transition {
@@ -63,7 +67,9 @@ class PathToRequiredLevel(private val afterIdentificationBackTo: ToolFreeState) 
                 )
             }
         }
-        return offer(ctx.enrollmentCandidates()) { Enrolling(it, emailObligation = emailObligation) } ?: ReIdentifyJourney.toReachOr(ctx.acrFloor, ctx, resumeWith = afterIdentificationBackTo) {
+        val enrollments = ctx.enrollmentCandidates()
+        if (enrollments.isNotEmpty()) return Transition.To(Enrolling(Offer(enrollments), emailObligation = emailObligation))
+        return ReIdentifyJourney.toReachOr(ctx.acrFloor, ctx, resumeWith = afterIdentificationBackTo) {
             // Reachable here means a channel-local reason, e.g. every remaining tool disabled.
             Transition.Abort(ctx.policy.reachability(account, ctx.acrFloor).toEnrollAbortMessage())
         }

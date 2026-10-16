@@ -67,9 +67,9 @@ class WebSelectMethodJourneyTest : BehaviorSpec({
         val state = WebSelectMethodState.SelectMethod(Offer(lookupTools), accountAlreadyKnown = false)
 
         `when`("the journey starts") {
-            val transition = journey.transition(state, JourneyEvent.Started, webCtx())
+            val transition = journey.transition(journey.firstState, JourneyEvent.Started, webCtx())
 
-            then("it keeps offering the lookup-login tools") {
+            then("it offers the lookup-login tools") {
                 transition shouldBe Transition.To(WebSelectMethodState.SelectMethod(Offer(state.offer.offered), accountAlreadyKnown = false))
             }
         }
@@ -94,7 +94,7 @@ class WebSelectMethodJourneyTest : BehaviorSpec({
         val state = WebSelectMethodState.SelectMethod(Offer(listOf(ToolId("auth-sms"))), accountAlreadyKnown = true)
 
         `when`("the journey starts, e.g. with restored evidence") {
-            val transition = journey.transition(state, JourneyEvent.Started, theCtx)
+            val transition = journey.transition(journey.firstState, JourneyEvent.Started, theCtx)
 
             then("it is authenticated at once") {
                 transition shouldBe Transition.Authenticated

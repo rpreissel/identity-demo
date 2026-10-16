@@ -30,6 +30,7 @@ Sicherheitsniveau anhebt. Dieser Step-up erklärt selbst, warum gefragt wird, un
 stateDiagram-v2
   [*] --> Requested
   Requested --> [*]: kein Konto bekannt -> Abort (410)
+  Requested --> [*]: approve-qr hier nicht verfügbar -> Abort (410)
   Requested --> FRESH_PROOF: loa2 und frischer Nachweis, ohne erneute Identifizierung als Ausweg
   FRESH_PROOF --> Confirming: SubJourneyFinished
   FRESH_PROOF --> [*]: SubJourneyCancelled -> Cancel
@@ -42,7 +43,8 @@ Die Journey läuft in drei Schritten, für einen kalt geöffneten und einen ange
 
 1. **Ohne Konto geht nichts.** Ist über die Geräteverknüpfung (`DeviceAccountLink`) kein Konto
    bekannt, endet die Journey sofort mit `Abort`. Identifizierung und Registrierung werden **nicht**
-   angeboten.
+   angeboten. Dasselbe gilt, wenn `approve-qr` auf diesem Kanal nicht verfügbar ist: Die Journey
+   verlangt keinen Nachweis, den sie danach nicht verwenden kann.
 2. **`loa2` und ein frischer Nachweis**, als Sub-Journey [`FRESH_PROOF`](fresh-proof.md)
    ([ADR-61](../adr/ADR-061-frischer-nachweis-als-gemeinsame-sub-journey.md)). Die Schwelle ist fest `loa2`, auch für Konten, die nie identifiziert wurden.
    Reicht das Niveau nicht, läuft darin ein Step-up, und anders als bei `MANAGE_AUTH_METHODS` ohne

@@ -9,6 +9,7 @@ import com.example.identity.core.orchestrator.domain.journey.StartingAccount
 import com.example.identity.core.orchestrator.domain.journey.DeviceLink
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
+import com.example.identity.core.orchestrator.domain.journey.notExpectedIn
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.AuthChoice
 import com.example.identity.core.orchestrator.domain.journey.state.Enrolling
@@ -31,22 +32,29 @@ object FastAccessJourney : JourneyWithoutInput<FastAccessState> {
     override fun transition(state: FastAccessState, event: JourneyEvent, ctx: JourneyContext): Transition =
         when (state) {
             is FastAccessState.Start -> when (event) {
+                JourneyEvent.Started -> firstOffer(ctx)
                 // Back from REGISTER or RE_IDENTIFY: re-check whether that already closes the gap before offering again.
                 is JourneyEvent.SubJourneyFinished -> toRequiredLevel.nextAfterProof(ctx)
-                else -> firstOffer(ctx)
+                else -> event.notExpectedIn(state)
             }
+
             is FastAccessState.PreferredAuth -> when (event) {
+                JourneyEvent.ActionCompleted -> toRequiredLevel.nextAfterProof(ctx)
                 is JourneyEvent.Abandoned -> toRequiredLevel.nextWithoutOr(setOf(state.toolId), ctx) { requireRegister() }
-                else -> toRequiredLevel.nextAfterProof(ctx)
+                else -> event.notExpectedIn(state)
             }
 
             is AuthChoice -> when (event) {
+                JourneyEvent.ActionCompleted -> toRequiredLevel.nextAfterProof(ctx)
                 // Nothing else provable is left on this device: hand off to a fresh identification.
                 is JourneyEvent.OfferExhausted -> toRequiredLevel.nextWithoutOr(event.declined, ctx) { requireRegister() }
-                else -> toRequiredLevel.nextAfterProof(ctx)
+                else -> event.notExpectedIn(state)
             }
 
-            is Enrolling -> toRequiredLevel.nextAfterEnrollment(ctx)
+            is Enrolling -> when (event) {
+                JourneyEvent.ActionCompleted -> toRequiredLevel.nextAfterEnrollment(ctx)
+                else -> event.notExpectedIn(state)
+            }
         }
 
     // Offers -------------------------------------------------------------------

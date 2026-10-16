@@ -9,6 +9,7 @@ import com.example.identity.core.orchestrator.domain.journey.OpensWebChannel
 import com.example.identity.core.orchestrator.domain.journey.SigningIn
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
+import com.example.identity.core.orchestrator.domain.journey.notExpectedIn
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.core.orchestrator.domain.journey.state.WebSelectMethodState
@@ -34,17 +35,21 @@ object WebSelectMethodJourney : JourneyWithoutInput<WebSelectMethodState> {
     override fun transition(state: WebSelectMethodState, event: JourneyEvent, ctx: JourneyContext): Transition =
         when (state) {
             is WebSelectMethodState.SelectMethod -> when (event) {
+                JourneyEvent.ActionCompleted -> finishOrOfferMore(ctx)
                 // Nothing left on offer: a step-up may still identify again, a first login just ends.
                 is JourneyEvent.OfferExhausted ->
                     if (ctx.account == null) Transition.Cancel
                     else reIdentifyOr(ctx) { Transition.Cancel }
-                else -> finishOrOfferMore(ctx)
+                else -> event.notExpectedIn(state)
             }
 
             // Started, or back from RE_IDENTIFY: taken-over evidence (docs/04-orchestrierung.md,
             // "Übernommene Nachweise als erster Übergang") or the identification may already close
             // the gap; otherwise the offer is built anew.
-            is WebSelectMethodState.Start -> finishOrOfferMore(ctx)
+            is WebSelectMethodState.Start -> when (event) {
+                JourneyEvent.Started, is JourneyEvent.SubJourneyFinished -> finishOrOfferMore(ctx)
+                else -> event.notExpectedIn(state)
+            }
         }
 
     /** Done once the channel's floor is proven; otherwise what can still prove more depends on who is signing in. */

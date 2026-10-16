@@ -10,8 +10,9 @@ import com.example.identity.core.orchestrator.domain.journey.StartingAccount
 import com.example.identity.core.orchestrator.domain.journey.DeviceLink
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
+import com.example.identity.core.orchestrator.domain.journey.notExpectedIn
 import com.example.identity.core.orchestrator.domain.journey.Transition
-import com.example.identity.core.orchestrator.domain.journey.state.Offer
+import com.example.identity.core.orchestrator.domain.journey.offer
 import com.example.identity.core.orchestrator.domain.journey.state.ConfirmPeerLoginState
 import com.example.identity.contract.tool_api.claims.AcrLevel
 
@@ -37,26 +38,31 @@ object ConfirmPeerLoginJourney : JourneyWithoutInput<ConfirmPeerLoginState> {
     override fun transition(state: ConfirmPeerLoginState, event: JourneyEvent, ctx: JourneyContext): Transition =
         when (state) {
             is ConfirmPeerLoginState.Requested -> when (event) {
-                is JourneyEvent.SubJourneyFinished -> Transition.To(confirming(ctx))
-                else -> requireFreshProof(ctx)
+                JourneyEvent.Started -> requireFreshProof(ctx)
+                is JourneyEvent.SubJourneyFinished -> offerApproval(ctx)
+                else -> event.notExpectedIn(state)
             }
 
             is ConfirmPeerLoginState.Confirming -> when (event) {
                 // The approval ran; the channel stays signed in. A channel that logged in only for
                 // the approval is asked by the app whether to log out again (ADR-60).
-                is JourneyEvent.ActionCompleted -> Transition.Authenticated
-                else -> error("Confirming does not understand $event")
+                JourneyEvent.ActionCompleted -> Transition.Authenticated
+                else -> event.notExpectedIn(state)
             }
         }
 
-    private fun confirming(ctx: JourneyContext) = ConfirmPeerLoginState.Confirming(Offer(ctx.peerApprovalCandidates()))
+    /** The approval itself, unless the approving tool was switched off meanwhile. */
+    private fun offerApproval(ctx: JourneyContext): Transition =
+        offer(ctx.peerApprovalCandidates(), ConfirmPeerLoginState::Confirming) ?: Transition.Abort(NO_APPROVAL_HERE)
 
     /**
      * Without an account (a cold entry on an unlinked device) it aborts; this journey offers no
-     * registration. Otherwise loa2 and a recent proof, never lowered for a never-identified account.
+     * registration. Nor does it ask for a proof it could not use, with no approving tool on offer.
+     * Otherwise loa2 and a recent proof, never lowered for a never-identified account.
      */
     private fun requireFreshProof(ctx: JourneyContext): Transition {
         if (ctx.account == null) return Transition.Abort(Text("Dieses Gerät ist noch keinem Konto zugeordnet - bitte zuerst regulär anmelden."))
+        if (ctx.peerApprovalCandidates().isEmpty()) return Transition.Abort(NO_APPROVAL_HERE)
         return Transition.RequireSubJourney(
             FreshProofJourney.before(ProofPurpose.PEER_LOGIN, REQUIRED_ACR),
             resumeWith = ConfirmPeerLoginState.Requested,
@@ -64,4 +70,6 @@ object ConfirmPeerLoginJourney : JourneyWithoutInput<ConfirmPeerLoginState> {
     }
 
     val REQUIRED_ACR = AcrLevel.LOA2
+
+    private val NO_APPROVAL_HERE = Text("Eine Anmeldung lässt sich auf diesem Gerät gerade nicht bestätigen.")
 }

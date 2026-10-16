@@ -6,6 +6,7 @@ import com.example.identity.core.orchestrator.domain.journey.Journey
 import com.example.identity.core.orchestrator.domain.journey.StartableWhenAuthenticated
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
+import com.example.identity.core.orchestrator.domain.journey.notExpectedIn
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.core.orchestrator.domain.journey.toAuthAbortMessage
@@ -29,15 +30,15 @@ object StepUpJourney : Journey<StepUpState> {
     override fun transition(state: StepUpState, event: JourneyEvent, ctx: JourneyContext): Transition =
         when (state) {
             is StepUpState.Start -> when (event) {
-                // Re-check whether the fresh proof already closes the gap before offering again.
-                is JourneyEvent.SubJourneyFinished -> finishOrContinue(state.goal, ctx)
-                else -> offerAuth(state.goal, ctx)
+                // Fresh, or back from RE_IDENTIFY: the session may already have reached the goal.
+                JourneyEvent.Started, is JourneyEvent.SubJourneyFinished -> finishOrContinue(state.goal, ctx)
+                else -> event.notExpectedIn(state)
             }
 
             is StepUpState.AuthChoice -> when (event) {
+                JourneyEvent.ActionCompleted -> finishOrContinue(state.goal, ctx)
                 is JourneyEvent.OfferExhausted -> offerReIdentOrGiveUp(state.goal, ctx, whenNone = Transition.Cancel)
-                // ActionCompleted: re-check with the fresh, post-proof context.
-                else -> finishOrContinue(state.goal, ctx)
+                else -> event.notExpectedIn(state)
             }
         }
 

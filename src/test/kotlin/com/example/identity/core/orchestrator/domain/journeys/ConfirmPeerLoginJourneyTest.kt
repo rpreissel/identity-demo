@@ -91,6 +91,17 @@ class ConfirmPeerLoginJourneyTest : BehaviorSpec({
         }
     }
 
+    given("Requested, the approving tool switched off") {
+        val acc = account(method("sms", AcrLevel.LOA2))
+        val theCtx = ctx(account = acc, availableTools = JourneyTestFixtures.allToolIds - ToolId("approve-qr"))
+        `when`("the journey starts") {
+            val transition = journey.transition(ConfirmPeerLoginState.Requested, JourneyEvent.Started, theCtx)
+            then("aborts before asking for a proof it could not use") {
+                transition.shouldBeInstanceOf<Transition.Abort>()
+            }
+        }
+    }
+
     given("Requested, waiting for its proof") {
         `when`("the FRESH_PROOF sub-journey finishes") {
             val event = JourneyEvent.SubJourneyFinished(FreshProofJourney, achievedAcr = AcrLevel.LOA2)

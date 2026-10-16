@@ -10,6 +10,7 @@ import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.ReIdentifyState
 import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.account
 import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.ctx
+import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.evidence
 import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.method
 import com.example.identity.core.orchestrator.domain.policy.SessionEvidence
 import com.example.identity.contract.tool_api.claims.AcrLevel
@@ -96,13 +97,30 @@ class ReIdentifyJourneyTest : BehaviorSpec({
 
     given("Identifying, more than one candidate offered") {
         val acc = account(method("sms", AcrLevel.LOA2))
-        val theCtx = ctx(account = acc)
         val state = ReIdentifyState.Identifying(AcrLevel.LOA2, Offer(listOf(ToolId("ident-fsc"), ToolId("ident-eid"))), ReIdentifyState.Kind.RECOVERY)
 
-        `when`("resumed after recording the proof (ActionCompleted)") {
+        `when`("resumed after recording a proof that reaches the target (ActionCompleted)") {
+            val theCtx = ctx(account = acc, evidence = evidence(listOf("fsc"), setOf(FactorType.POSSESSION, FactorType.KNOWLEDGE), account = acc))
             val transition = journey.transition(state, JourneyEvent.ActionCompleted, theCtx)
-            then("finishes directly - the identification's own maxAcr already IS the achieved level") {
+            then("finishes") {
                 transition shouldBe Transition.Authenticated
+            }
+        }
+
+        `when`("resumed after recording a proof below the target (ActionCompleted)") {
+            // Nect reports its level per procedure: a passport video ident proves less than offered for.
+            val theCtx = ctx(
+                account = acc,
+                evidence = SessionEvidence.fromNow(
+                    listOf("nect-epass"), setOf(FactorType.POSSESSION),
+                    methodAcr = mapOf("nect-epass" to "loa1"), amrSourceId = mapOf("nect-epass" to "ident-nect")
+                ),
+                acrFloor = AcrLevel.LOA2
+            )
+            val transition = journey.transition(state, JourneyEvent.ActionCompleted, theCtx)
+            then("offers the identifications still left instead of claiming success") {
+                transition.shouldBeInstanceOf<Transition.To>()
+                transition.state.shouldBeInstanceOf<ReIdentifyState.Identifying>().offered shouldContainExactly listOf(ToolId("ident-fsc"), ToolId("ident-eid"))
             }
         }
     }

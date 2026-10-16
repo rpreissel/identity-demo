@@ -29,7 +29,8 @@ stateDiagram-v2
   OfferReIdent --> [*]: zugestimmt, aber kein Identifizierungs-Tool mehr verfügbar -> Cancel
   Identifying --> Identifying: ein Tool abgelehnt, weitere übrig
   Identifying --> [*]: alle abgelehnt -> Cancel
-  Identifying --> Finished: Identität bestätigt
+  Identifying --> Finished: Identität bestätigt, Zielniveau erreicht
+  Identifying --> Identifying: Identität bestätigt, aber unter dem Zielniveau, weitere übrig
   Finished --> [*]
 ```
 
@@ -39,7 +40,10 @@ deshalb nie, ohne dass der Nutzer es merkt.
 
 `Identifying` enthält das Zielniveau (`targetAcr`), das
 Angebot und die bisherigen Ablehnungen. Für sich allein erreicht `ident-fsc` das Niveau `loa2`.
-`ident-eid` und `ident-nect` erreichen `loa3`.
+`ident-eid` und `ident-nect` erreichen `loa3`. Nect meldet sein Niveau aber je Verfahren: Eine
+Identifizierung kann also unter dem Niveau bleiben, für das sie angeboten wurde. Deshalb prüft
+`Identifying` nach jeder Identifizierung das Zielniveau und bietet sonst die übrigen Verfahren an;
+das schon benutzte ist dann verbraucht.
 
 **Eigener Text für das Experiment.** Der Standardtext lautet „Sicherheitsniveau mit den
 vorhandenen Anmeldeverfahren nicht erreichbar“. Er passt nur für `FAST_ACCESS`, `LOOKUP_LOGIN`,

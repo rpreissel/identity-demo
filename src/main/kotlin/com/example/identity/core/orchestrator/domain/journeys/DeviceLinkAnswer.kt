@@ -3,6 +3,7 @@ package com.example.identity.core.orchestrator.domain.journeys
 import com.example.identity.core.orchestrator.domain.journey.Action
 import com.example.identity.core.orchestrator.domain.journey.Answer
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
+import com.example.identity.core.orchestrator.domain.journey.notExpectedIn
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.DeviceLinkQuestion
 
@@ -16,6 +17,6 @@ internal inline fun DeviceLinkQuestion.answered(event: JourneyEvent, whenDecline
         Answer.ACCEPT -> Transition.Perform(Action.LinkDevice, resumeState = this)
         Answer.DECLINE -> whenDeclined()
     }
-    is JourneyEvent.ActionCompleted -> afterwards()
-    else -> error("DeviceLinkQuestion only accepts JourneyEvent.Answered")
+    JourneyEvent.ActionCompleted -> afterwards()
+    else -> event.notExpectedIn(this)
 }

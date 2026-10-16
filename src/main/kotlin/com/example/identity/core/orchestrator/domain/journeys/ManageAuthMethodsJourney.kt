@@ -10,6 +10,7 @@ import com.example.identity.core.orchestrator.domain.journey.Journey
 import com.example.identity.core.orchestrator.domain.journey.StartableWhenAuthenticated
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
+import com.example.identity.core.orchestrator.domain.journey.notExpectedIn
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.selfServiceAcrFloor
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
@@ -35,21 +36,26 @@ object ManageAuthMethodsJourney : Journey<ManageAuthMethodsState> {
     override fun transition(state: ManageAuthMethodsState, event: JourneyEvent, ctx: JourneyContext): Transition =
         when (state) {
             is ManageAuthMethodsState.Wish -> when (event) {
+                JourneyEvent.Started -> requireFreshProof(state, ctx)
                 is JourneyEvent.SubJourneyFinished -> carryOut(state, ctx)
                 // A removal or a retraction resumes in its wish, which then finishes.
-                is JourneyEvent.ActionCompleted -> Transition.Authenticated
-                else -> requireFreshProof(state, ctx)
+                JourneyEvent.ActionCompleted -> Transition.Authenticated
+                else -> event.notExpectedIn(state)
             }
 
             is ManageAuthMethodsState.Changing -> when (event) {
-                is JourneyEvent.OfferExhausted -> Transition.Cancel
                 // The new credential was adopted and replaced the old one.
-                else -> Transition.Authenticated
+                JourneyEvent.ActionCompleted -> Transition.Authenticated
+                is JourneyEvent.OfferExhausted -> Transition.Cancel
+                else -> event.notExpectedIn(state)
             }
 
-            // The enrollment just ran - one successful enrollment ends this journey. Backing out only
-            // re-offers (MANDATORY); giving up entirely is DELETE .../journey.
-            is ManageAuthMethodsState.Enrolling -> Transition.Authenticated
+            // One successful enrollment ends this journey. Backing out only re-offers (MANDATORY);
+            // giving up entirely is DELETE .../journey.
+            is ManageAuthMethodsState.Enrolling -> when (event) {
+                JourneyEvent.ActionCompleted -> Transition.Authenticated
+                else -> event.notExpectedIn(state)
+            }
         }
 
     /**
@@ -59,7 +65,7 @@ object ManageAuthMethodsJourney : Journey<ManageAuthMethodsState> {
     private fun requireFreshProof(wish: ManageAuthMethodsState.Wish, ctx: JourneyContext): Transition {
         val requiredAcr = when (wish) {
             ManageAuthMethodsState.AddRequested -> {
-                if (offerEnrollment(ctx) is Transition.Authenticated) return Transition.Authenticated
+                if (ctx.enrollmentCandidates().isEmpty()) return Transition.Authenticated
                 selfServiceAcrFloor(ctx.requireAccount())
             }
             is ManageAuthMethodsState.RemoveRequested, is ManageAuthMethodsState.RetractAttributeRequested -> selfServiceAcrFloor(ctx.requireAccount())

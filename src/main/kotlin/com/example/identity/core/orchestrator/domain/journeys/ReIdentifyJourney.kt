@@ -10,6 +10,7 @@ import com.example.identity.core.orchestrator.domain.journey.OnlyAsSubJourney
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
 import com.example.identity.core.orchestrator.domain.journey.Answer
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
+import com.example.identity.core.orchestrator.domain.journey.notExpectedIn
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.ReIdentifyState
 import com.example.identity.core.orchestrator.domain.journey.state.ToolFreeState
@@ -51,21 +52,26 @@ object ReIdentifyJourney : Journey<ReIdentifyState> {
         when (state) {
             is ReIdentifyState.OfferReIdent -> when (event) {
                 is JourneyEvent.Answered -> when (event.answer) {
-                    Answer.ACCEPT -> offerIdentifying(state, ctx) ?: Transition.Cancel
+                    Answer.ACCEPT -> offerIdentifying(state.targetAcr, state.kind, ctx)
                     Answer.DECLINE -> Transition.Cancel
                 }
-                // Started: always present the prompt, unconditionally.
-                else -> Transition.To(state)
+                // Always present the prompt, unconditionally.
+                JourneyEvent.Started -> Transition.To(state)
+                else -> event.notExpectedIn(state)
             }
 
             is ReIdentifyState.Identifying -> when (event) {
+                // The identification is booked. It may have proven less than offered for (Nect
+                // reports its level per procedure); then the remaining identifications are offered.
+                JourneyEvent.ActionCompleted ->
+                    if (ctx hasReached state.targetAcr) Transition.Authenticated
+                    else offerIdentifying(state.targetAcr, state.kind, ctx)
                 is JourneyEvent.OfferExhausted -> Transition.Cancel
-                // Identity confirmed - this identification's own maxAcr already IS the achieved level.
-                else -> Transition.Authenticated
+                else -> event.notExpectedIn(state)
             }
         }
 
-    /** Null when no identification tool can reach the target (anymore). */
-    private fun offerIdentifying(offer: ReIdentifyState.OfferReIdent, ctx: JourneyContext): Transition? =
-        offer(ctx.reIdentificationCandidates(offer.targetAcr)) { ReIdentifyState.Identifying(offer.targetAcr, it, kind = offer.kind) }
+    /** The identifications that can still reach [targetAcr]; giving up when none is left. */
+    private fun offerIdentifying(targetAcr: AcrLevel, kind: ReIdentifyState.Kind, ctx: JourneyContext): Transition =
+        offer(ctx.reIdentificationCandidates(targetAcr)) { ReIdentifyState.Identifying(targetAcr, it, kind = kind) } ?: Transition.Cancel
 }

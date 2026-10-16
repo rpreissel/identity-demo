@@ -9,6 +9,7 @@ import com.example.identity.core.orchestrator.domain.journey.Journey
 import com.example.identity.core.orchestrator.domain.journey.OnlyAsSubJourney
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
+import com.example.identity.core.orchestrator.domain.journey.notExpectedIn
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.upTo
 import com.example.identity.contract.tool_api.claims.AcrLevel
@@ -41,27 +42,28 @@ object FreshProofJourney : Journey<FreshProofState> {
                 is JourneyEvent.SubJourneyFinished ->
                     if (event.achievedAcr >= state.requiredAcr) Transition.Authenticated
                     else Transition.Cancel
-                else -> gate(state, ctx) ?: freshness(state, ctx)
+                JourneyEvent.Started ->
+                    if (ctx hasReached state.requiredAcr) freshness(state, ctx)
+                    else stepUpFirst(state, ctx)
+                else -> event.notExpectedIn(state)
             }
 
             is FreshProofState.Reproving -> when (event) {
                 is JourneyEvent.OfferExhausted -> Transition.Cancel
                 // Any active factor suffices; it was booked as Action.Reconfirm, so nothing of it is recorded.
-                is JourneyEvent.ActionCompleted -> Transition.Authenticated
-                else -> error("Reproving does not understand $event")
+                JourneyEvent.ActionCompleted -> Transition.Authenticated
+                else -> event.notExpectedIn(state)
             }
         }
 
-    /** Null once the session already carries [FreshProofState.requiredAcr] and the caller may proceed. */
-    private fun gate(state: FreshProofState.Start, ctx: JourneyContext): Transition? {
-        if (ctx hasReached state.requiredAcr) return null
-        return Transition.RequireSubJourney(
+    /** The session is below [FreshProofState.requiredAcr]: a step-up first, which then counts as the fresh proof. */
+    private fun stepUpFirst(state: FreshProofState.Start, ctx: JourneyContext): Transition =
+        Transition.RequireSubJourney(
             StepUpJourney.toward(
                 (ctx.currentAcr upTo state.requiredAcr).copy(purpose = state.purpose)
             ),
             resumeWith = state,
         )
-    }
 
     /** Done on a recent proof, else one active factor is re-proven. */
     private fun freshness(state: FreshProofState.Start, ctx: JourneyContext): Transition {

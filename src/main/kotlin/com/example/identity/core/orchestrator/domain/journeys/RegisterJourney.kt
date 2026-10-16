@@ -22,6 +22,7 @@ import com.example.identity.core.orchestrator.domain.journey.StartingAccount
 import com.example.identity.core.orchestrator.domain.journey.DeviceLink
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
+import com.example.identity.core.orchestrator.domain.journey.notExpectedIn
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.AuthChoice
 import com.example.identity.core.orchestrator.domain.journey.state.Enrolling
@@ -52,54 +53,71 @@ object RegisterJourney : JourneyWithoutInput<RegisterState> {
     override fun transition(state: RegisterState, event: JourneyEvent, ctx: JourneyContext): Transition =
         when (state) {
             is RegisterState.Start -> when (event) {
+                JourneyEvent.Started -> if (ctx.enrollFirst) offerEmailFirst(ctx) else offerIdentification(ctx)
                 // A RE_IDENTIFY sub-journey before a new method finished: re-check.
                 is JourneyEvent.SubJourneyFinished -> toRequiredLevel.nextAfterProof(ctx)
-                else -> if (ctx.enrollFirst) offerEmailFirst(ctx) else offerIdentification(ctx)
+                else -> event.notExpectedIn(state)
             }
 
             // The closing, optional identification came back, however it ended: the journey is done.
-            is RegisterState.Closing -> finishOrOfferRebind(ctx)
+            is RegisterState.Closing -> when (event) {
+                is JourneyEvent.SubJourneyFinished, is JourneyEvent.SubJourneyCancelled -> finishOrOfferRebind(ctx)
+                else -> event.notExpectedIn(state)
+            }
 
             is RegisterState.Identifying -> when (event) {
-                // Declining the last identification offer is giving up on the journey, not an error.
-                is JourneyEvent.OfferExhausted -> Transition.Cancel
                 // No isSatisfied check: identification alone clears most floors and would let a
                 // run finish without a durable credential.
-                else -> afterIdentification(ctx)
+                JourneyEvent.ActionCompleted -> afterIdentification(ctx)
+                // Declining the last identification offer is giving up on the journey, not an error.
+                is JourneyEvent.OfferExhausted -> Transition.Cancel
+                else -> event.notExpectedIn(state)
             }
 
             is AuthChoice -> when (event) {
-                // Nothing else provable is left: identification is the only way forward.
-                is JourneyEvent.OfferExhausted -> toRequiredLevel.nextWithoutOr(event.declined, ctx) { offerIdentification(ctx) }
                 // No factor-kind or email obligation: a rediscovered, set-up account finishing here
                 // is an ordinary login, not a fresh registration.
-                else -> toRequiredLevel.nextAfterProof(ctx)
+                JourneyEvent.ActionCompleted -> toRequiredLevel.nextAfterProof(ctx)
+                // Nothing else provable is left: identification is the only way forward.
+                is JourneyEvent.OfferExhausted -> toRequiredLevel.nextWithoutOr(event.declined, ctx) { offerIdentification(ctx) }
+                else -> event.notExpectedIn(state)
             }
 
             is DeviceLinkQuestion -> when (state.wording) {
+                // Asked right after the identification: declining is giving up, since no method is
+                // offered on a device that stays someone else's.
+                DeviceLinkQuestion.Wording.REBIND_OR_CANCEL -> state.answered(event, whenDeclined = { Transition.Cancel }) { afterIdentification(ctx) }
                 // Asked at the end ("Enrollment zuerst"): the registration is done either way;
                 // declined, the account stays usable through the lookup tools.
                 DeviceLinkQuestion.Wording.REBIND -> state.answered(event, whenDeclined = { Transition.Authenticated }) { Transition.Authenticated }
-                // Asked right after the identification: declining is giving up, since no method is
-                // offered on a device that stays someone else's.
-                else -> state.answered(event, whenDeclined = { Transition.Cancel }) { afterIdentification(ctx) }
+                // A first link happens without asking (DeviceLink.LINK_WITHOUT_ASKING).
+                DeviceLinkQuestion.Wording.OFFER -> error("REGISTER never offers a first device link")
             }
 
             is RegisterState.Assigning -> when (event) {
-                // Backing out is the "not now" (DeclinePolicy.OPTIONAL): the run carries on as prospect (ADR-10).
-                is JourneyEvent.OfferExhausted -> continueAfterAssignment(ctx)
                 // Back through afterIdentification: the assignment may have moved this run to
                 // another account (ADR-20), which must pass the same checks (device link, existing
                 // methods). The assignment offer is not repeated, since the person is bound now.
-                is JourneyEvent.ActionCompleted -> afterIdentification(ctx)
-                else -> continueAfterAssignment(ctx)
+                JourneyEvent.ActionCompleted -> afterIdentification(ctx)
+                // Backing out is the "not now" (DeclinePolicy.OPTIONAL): the run carries on as prospect (ADR-10).
+                is JourneyEvent.OfferExhausted -> continueAfterAssignment(ctx)
+                else -> event.notExpectedIn(state)
             }
 
             // Mandatory steps: a completed tool is adopted, and only the next step differs.
-            is RegisterState.ConfirmingEmail -> afterEmailConfirmed(ctx)
-            is Enrolling -> afterEnrollment(ctx, state.emailObligation)
+            is RegisterState.ConfirmingEmail -> when (event) {
+                JourneyEvent.ActionCompleted -> afterEmailConfirmed(ctx)
+                else -> event.notExpectedIn(state)
+            }
+            is Enrolling -> when (event) {
+                JourneyEvent.ActionCompleted -> afterEnrollment(ctx, state.emailObligation)
+                else -> event.notExpectedIn(state)
+            }
             // The email obligation is already discharged here.
-            is RegisterState.SecondFactorKindObligation -> afterEnrollment(ctx, emailObligation = false)
+            is RegisterState.SecondFactorKindObligation -> when (event) {
+                JourneyEvent.ActionCompleted -> afterEnrollment(ctx, emailObligation = false)
+                else -> event.notExpectedIn(state)
+            }
         }
 
     // Offers -------------------------------------------------------------------
@@ -176,10 +194,11 @@ object RegisterJourney : JourneyWithoutInput<RegisterState> {
      */
     private fun afterEnrollment(ctx: JourneyContext, emailObligation: Boolean): Transition {
         if (emailObligation) confirmEmail(ctx.requireAccount(), ctx)?.let { return it }
-        val next = toRequiredLevel.nextAfterEnrollment(ctx, identifyBeforeEnrolling = !ctx.enrollFirst, emailObligation = emailObligation)
-        if (next != Transition.Authenticated) return next
+        if (!toRequiredLevel.isReached(ctx)) {
+            return toRequiredLevel.offerNewMethod(ctx, identifyBeforeEnrolling = !ctx.enrollFirst, emailObligation = emailObligation)
+        }
         offer(secondFactorKindCandidates(ctx), RegisterState::SecondFactorKindObligation)?.let { return it }
-        return if (ctx.enrollFirst) offerClosingIdentification(ctx) else next
+        return if (ctx.enrollFirst) offerClosingIdentification(ctx) else Transition.Authenticated
     }
 
     /**

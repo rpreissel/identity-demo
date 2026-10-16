@@ -3,6 +3,7 @@ package com.example.identity.core.orchestrator.domain.journey
 import com.example.identity.contract.tool_api.ToolId
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.Tool
+import com.example.identity.core.orchestrator.domain.journey.state.JourneyState
 
 /** What just happened to the journey. */
 sealed interface JourneyEvent {
@@ -48,3 +49,10 @@ sealed interface JourneyEvent {
     /** An explicit answer to what an [AnswerableState] is waiting on (`JourneyService.answer`). */
     data class Answered(val answer: Answer) : JourneyEvent
 }
+
+/**
+ * The arm for every event [state] never receives. Each state names the events it does receive, so
+ * an event it does not expect is a broken state machine, never a silent success.
+ */
+fun JourneyEvent.notExpectedIn(state: JourneyState): Nothing =
+    error("${state::class.simpleName} does not expect $this")

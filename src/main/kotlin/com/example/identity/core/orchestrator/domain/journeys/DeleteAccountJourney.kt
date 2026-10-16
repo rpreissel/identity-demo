@@ -7,6 +7,7 @@ import com.example.identity.core.orchestrator.domain.journey.StartableWhenAuthen
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
 import com.example.identity.core.orchestrator.domain.journey.Answer
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
+import com.example.identity.core.orchestrator.domain.journey.notExpectedIn
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.DeleteAccountState
 
@@ -33,9 +34,10 @@ object DeleteAccountJourney : JourneyWithoutInput<DeleteAccountState> {
                 }
                 is JourneyEvent.SubJourneyFinished -> Transition.Perform(Action.DeleteAccount, resumeState = state)
                 // The delete ran; end the channel.
-                is JourneyEvent.ActionCompleted -> Transition.Logout
-                // Started: always present the prompt, unconditionally.
-                else -> Transition.To(state)
+                JourneyEvent.ActionCompleted -> Transition.Logout
+                // Always present the prompt, unconditionally.
+                JourneyEvent.Started -> Transition.To(state)
+                else -> event.notExpectedIn(state)
             }
         }
 

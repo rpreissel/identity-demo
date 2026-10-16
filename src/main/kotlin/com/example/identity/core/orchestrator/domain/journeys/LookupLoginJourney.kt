@@ -11,7 +11,10 @@ import com.example.identity.core.orchestrator.domain.journey.StartingAccount
 import com.example.identity.core.orchestrator.domain.journey.DeviceLink
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
+import com.example.identity.core.orchestrator.domain.journey.notExpectedIn
 import com.example.identity.core.orchestrator.domain.journey.Transition
+import com.example.identity.core.account.AccountProfile
+import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.core.orchestrator.domain.journey.state.LookupLoginState
 import com.example.identity.core.orchestrator.domain.journey.state.OfferingState
 import com.example.identity.core.orchestrator.domain.journey.toAuthAbortMessage
@@ -33,14 +36,10 @@ object LookupLoginJourney : JourneyWithoutInput<LookupLoginState> {
     override fun transition(state: LookupLoginState, event: JourneyEvent, ctx: JourneyContext): Transition =
         when (state) {
             is LookupLoginState.Start -> when (event) {
-                // Re-check whether the fresh proof already closes the gap before offering again.
+                JourneyEvent.Started -> offerLookup(ctx)
+                // Back from RE_IDENTIFY: the fresh proof may already close the gap.
                 is JourneyEvent.SubJourneyFinished -> settleOrRaise(ctx)
-                else -> {
-                    // Every tool that resolves the account itself; authCandidates would need an
-                    // account, which does not exist yet.
-                    offer(ctx.lookupLoginCandidates(), LookupLoginState::Credential)
-                        ?: Transition.Abort(Text("Es gibt kein Anmeldeverfahren, das nicht an ein Gerät gebunden ist"))
-                }
+                else -> event.notExpectedIn(state)
             }
 
             // The first proof has no account yet, so a lookup tool resolves it; the executor
@@ -54,9 +53,15 @@ object LookupLoginJourney : JourneyWithoutInput<LookupLoginState> {
             is DeviceLinkQuestion -> state.answered(event, whenDeclined = { Transition.Authenticated }) { Transition.Authenticated }
         }
 
+    /** Every tool that resolves the account itself; authCandidates would need an account, which does not exist yet. */
+    private fun offerLookup(ctx: JourneyContext): Transition =
+        offer(ctx.lookupLoginCandidates(), LookupLoginState::Credential)
+            ?: Transition.Abort(Text("Es gibt kein Anmeldeverfahren, das nicht an ein Gerät gebunden ist"))
+
     private fun proving(state: OfferingState, event: JourneyEvent, ctx: JourneyContext): Transition = when (event) {
+        JourneyEvent.ActionCompleted -> settleOrRaise(ctx)
         is JourneyEvent.OfferExhausted -> Transition.Cancel
-        else -> settleOrRaise(ctx)
+        else -> event.notExpectedIn(state)
     }
 
     /**
@@ -66,17 +71,18 @@ object LookupLoginJourney : JourneyWithoutInput<LookupLoginState> {
      */
     private fun settleOrRaise(ctx: JourneyContext): Transition {
         val account = ctx.requireAccount()
-        if (ctx hasReached ctx.acrFloor) {
-            // Unlinked: offer the link. Linked elsewhere: warn before rebinding. Linked here:
-            // nothing to ask.
-            return when (ctx.linkedAccountId) {
-                null -> Transition.To(DeviceLinkQuestion(DeviceLinkQuestion.Wording.OFFER))
-                account.accountId -> Transition.Authenticated
-                else -> Transition.To(DeviceLinkQuestion(DeviceLinkQuestion.Wording.REBIND))
-            }
-        }
-        return offer(ctx.authCandidates(), LookupLoginState::AdditionalFactor) ?: ReIdentifyJourney.toReachOr(ctx.acrFloor, ctx, resumeWith = LookupLoginState.Start) {
+        if (ctx hasReached ctx.acrFloor) return askAboutDeviceLink(account, ctx)
+        val furtherFactors = ctx.authCandidates()
+        if (furtherFactors.isNotEmpty()) return Transition.To(LookupLoginState.AdditionalFactor(Offer(furtherFactors)))
+        return ReIdentifyJourney.toReachOr(ctx.acrFloor, ctx, resumeWith = LookupLoginState.Start) {
             Transition.Abort(ctx.policy.reachability(account, ctx.acrFloor).toAuthAbortMessage())
         }
+    }
+
+    /** Unlinked: offer the link. Linked elsewhere: warn before rebinding. Linked here: nothing to ask. */
+    private fun askAboutDeviceLink(account: AccountProfile, ctx: JourneyContext): Transition = when (ctx.linkedAccountId) {
+        null -> Transition.To(DeviceLinkQuestion(DeviceLinkQuestion.Wording.OFFER))
+        account.accountId -> Transition.Authenticated
+        else -> Transition.To(DeviceLinkQuestion(DeviceLinkQuestion.Wording.REBIND))
     }
 }
