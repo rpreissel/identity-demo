@@ -94,11 +94,8 @@ class JourneyRecorder(
      */
     fun recordSignIn(journey: AuthJourney, channel: ChannelSession, acr: AcrLevel) {
         val (amr, tools) = proofsOf(channel)
-        when (val subject = channel.subject ?: return) {
-            is Subject.Account -> signInLog.signedIn(subject.id, channel.type.name, acr.value, amr, tools, journey.requireKind().name)
-            // A process access has one proof and no step-up (ADR-48).
-            is Subject.Invitation -> signInLog.invitationSignedIn(subject.id, channel.type.name, acr.value, amr, tools)
-        }
+        val subject = channel.subject ?: return
+        signInLog.signedIn(subject, channel.type.name, acr.value, amr, tools, journey.requireKind().name)
     }
 
     /** A step-up finished, also one a parent journey waited on. [acr] is the level the session holds now. */
@@ -118,10 +115,7 @@ class JourneyRecorder(
     }
 
     /** A session the holder ended on purpose. An expiry is not recorded. */
-    fun recordSignOut(channel: ChannelSession, endedBy: String) {
-        when (val subject = channel.subject ?: return) {
-            is Subject.Account -> signInLog.signedOut(subject.id, channel.type.name, endedBy)
-            is Subject.Invitation -> signInLog.invitationSignedOut(subject.id, channel.type.name, endedBy)
-        }
+    fun recordSignOut(channel: ChannelSession) {
+        channel.subject?.let { signInLog.signedOut(it, channel.type.name) }
     }
 }

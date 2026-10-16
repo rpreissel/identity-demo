@@ -60,7 +60,7 @@ class SignInLogIntegrationTest : IntegrationTestSupport() {
                     @Suppress("UNCHECKED_CAST")
                     (signedIn.details["tools"] as List<String>) shouldContainAll listOf("auth-sms@1", "auth-password@1")
                     signedIn.details["type"] shouldBe "SIGNED_IN"
-                    signedIn.details["version"] shouldBe 2
+                    signedIn.details["version"] shouldBe 3
                 }
             }
 

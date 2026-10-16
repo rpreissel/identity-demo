@@ -198,19 +198,6 @@ class ChannelSessionLifecycleTest : BehaviorSpec({
         }
     }
 
-    given("end() with a state that is not terminal") {
-        val f = Fixture()
-        val channel = channel(ChannelType.APP)
-
-        `when`("ending the channel as AUTHENTICATED") {
-            val result = runCatching { f.lifecycle.end(channel, ChannelState.AUTHENTICATED) }
-
-            then("it refuses with IllegalStateException") {
-                shouldThrow<IllegalStateException> { result.getOrThrow() }
-            }
-        }
-    }
-
     given("end() on a logged-in APP channel whose session Keycloak itself reported as ended") {
         val f = Fixture()
         val context = loggedInContext(keycloakSessionId = "kc-session-1")
@@ -218,15 +205,32 @@ class ChannelSessionLifecycleTest : BehaviorSpec({
         every { f.appTokenSessionService.getAppTokenSession(context.appTokenSessionId!!) } returns context
 
         `when`("the back channel ends it") {
-            f.lifecycle.end(channel, ChannelState.LOGGED_OUT, endedAtKeycloak = true)
+            f.lifecycle.end(channel, ChannelEnd.SIGNED_OUT_AT_KEYCLOAK)
 
             then("it asks Keycloak nothing: the logout there is still running") {
                 verify(exactly = 0) { f.eventPublisher.publishEvent(any<KeycloakSessionEnded>()) }
             }
             then("it still records the sign-out and clears the tokens, keeping the session id") {
-                verify(exactly = 1) { f.journeyRecorder.recordSignOut(channel, endedBy = "HOLDER") }
+                verify(exactly = 1) { f.journeyRecorder.recordSignOut(channel) }
                 context.refreshToken.shouldBeNull()
                 context.keycloakSessionId shouldBe "kc-session-1"
+            }
+        }
+    }
+
+    given("end() on a further APP channel of a session Keycloak reported as ended") {
+        val f = Fixture()
+        val context = loggedInContext(keycloakSessionId = "kc-session-1")
+        val channel = channel(ChannelType.APP).apply { appTokenSessionId = context.appTokenSessionId }
+        every { f.appTokenSessionService.getAppTokenSession(context.appTokenSessionId!!) } returns context
+
+        `when`("the back channel ends it after the first channel wrote the sign-out") {
+            f.lifecycle.end(channel, ChannelEnd.SIGNED_OUT_AT_KEYCLOAK_ALREADY_LOGGED)
+
+            then("it writes no second sign-out and asks Keycloak nothing") {
+                verify(exactly = 0) { f.journeyRecorder.recordSignOut(any()) }
+                verify(exactly = 0) { f.eventPublisher.publishEvent(any<KeycloakSessionEnded>()) }
+                channel.state shouldBe ChannelState.LOGGED_OUT
             }
         }
     }
@@ -241,10 +245,10 @@ class ChannelSessionLifecycleTest : BehaviorSpec({
         every { f.appTokenSessionService.getAppTokenSession(context.appTokenSessionId!!) } returns context
 
         `when`("the holder logs out") {
-            f.lifecycle.end(channel, ChannelState.LOGGED_OUT)
+            f.lifecycle.end(channel, ChannelEnd.SIGNED_OUT)
 
-            then("it records the sign-out as the holder's") {
-                verify(exactly = 1) { f.journeyRecorder.recordSignOut(channel, endedBy = "HOLDER") }
+            then("it records the sign-out") {
+                verify(exactly = 1) { f.journeyRecorder.recordSignOut(channel) }
             }
 
             then("it publishes the end of exactly this Keycloak session") {
@@ -275,10 +279,10 @@ class ChannelSessionLifecycleTest : BehaviorSpec({
         every { f.appTokenSessionService.getAppTokenSession(context.appTokenSessionId!!) } returns context
 
         `when`("the channel expires") {
-            f.lifecycle.end(channel, ChannelState.EXPIRED)
+            f.lifecycle.end(channel, ChannelEnd.EXPIRED)
 
             then("it records no sign-out, since an expiry is no event") {
-                verify(exactly = 0) { f.journeyRecorder.recordSignOut(any(), any()) }
+                verify(exactly = 0) { f.journeyRecorder.recordSignOut(any()) }
             }
 
             then("it still ends the Keycloak session and clears the tokens") {
@@ -296,7 +300,7 @@ class ChannelSessionLifecycleTest : BehaviorSpec({
         every { f.appTokenSessionService.getAppTokenSession(context.appTokenSessionId!!) } returns context
 
         `when`("the holder logs out") {
-            f.lifecycle.end(channel, ChannelState.LOGGED_OUT)
+            f.lifecycle.end(channel, ChannelEnd.SIGNED_OUT)
 
             then("it leaves the Web channel's Keycloak session to Keycloak") {
                 verify(exactly = 0) { f.eventPublisher.publishEvent(any<Any>()) }

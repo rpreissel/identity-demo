@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.channel
 
+import com.example.identity.core.orchestrator.journey.ChannelEnd
 import com.example.identity.core.orchestrator.domain.journey.Answer
 import com.example.identity.core.orchestrator.domain.policy.MethodEvidence
 import com.example.identity.core.orchestrator.journey.JourneyEndedException
@@ -179,7 +180,7 @@ class ChannelService(
 
     /** The session behind the channel is gone, so the channel ends with it (ADR-43). */
     private fun loginEnded(channel: LiveChannel, cause: RuntimeException): OrchestratorException {
-        journeyService.endSession(channel, ChannelState.EXPIRED)
+        journeyService.endSession(channel, ChannelEnd.EXPIRED)
         return OrchestratorException.processGone(Text("Die Anmeldung ist abgelaufen. Bitte melden Sie sich neu an."), cause.message)
     }
 
@@ -284,7 +285,7 @@ class ChannelService(
         } else {
             journeyTraceService.recordForChannel(channel.session.forLog(), "LOGGED_OUT")
         }
-        journeyService.endSession(channel, ChannelState.LOGGED_OUT)
+        journeyService.endSession(channel, ChannelEnd.SIGNED_OUT)
     }
 
     /**

@@ -1,5 +1,6 @@
 package com.example.identity.core.account
 
+import com.example.identity.contract.tool_api.Subject
 import com.example.identity.contract.tool_api.ids.AccountId
 import com.example.identity.contract.tool_api.ids.InvitationId
 import io.micrometer.core.instrument.MeterRegistry
@@ -53,8 +54,8 @@ class SignInLog(
      * (`auth-sms@1`, ADR-51); proofs Keycloak made itself have none.
      */
     @Transactional(propagation = Propagation.REQUIRED)
-    fun signedIn(accountId: AccountId, channel: String?, acr: String?, amr: List<String>, tools: List<String>, intent: String) =
-        record(accountId, SignInType.SIGNED_IN, channel, acr, mapOf("amr" to amr, "tools" to tools, "intent" to intent))
+    fun signedIn(subject: Subject, channel: String?, acr: String?, amr: List<String>, tools: List<String>, journey: String) =
+        record(subject, SignInType.SIGNED_IN, channel, acr, mapOf("amr" to amr, "tools" to tools, "journey" to journey))
 
     /** A STEP_UP journey raised the level of an authenticated channel. [tools] as in [signedIn]. */
     @Transactional(propagation = Propagation.REQUIRED)
@@ -74,22 +75,13 @@ class SignInLog(
     fun lockedOut(accountId: AccountId, channel: String?, lockedUntil: Instant) =
         record(accountId, SignInType.LOCKED_OUT, channel, details = mapOf("lockedUntil" to lockedUntil.toString()))
 
-    /** A session ended on purpose. [endedBy]: `HOLDER` or `IDENTITY_PROVIDER` (Keycloak ended it). */
+    /**
+     * A session ended on purpose. `endedBy` is always `HOLDER`: Keycloak's `logout_token` does not say
+     * whether the holder, an admin or the orchestrator signed out (ADR-60).
+     */
     @Transactional(propagation = Propagation.REQUIRED)
-    fun signedOut(accountId: AccountId, channel: String?, endedBy: String) =
-        record(accountId, SignInType.SIGNED_OUT, channel, details = mapOf("endedBy" to endedBy))
-
-    /** A process access (ADR-48) left a Web channel signed in as [invitation]. [tools] as in [signedIn]. */
-    @Transactional(propagation = Propagation.REQUIRED)
-    fun invitationSignedIn(invitation: InvitationId, channel: String?, acr: String?, amr: List<String>, tools: List<String>) =
-        save(SignInLogEntry(invitation = invitation, signInType = SignInType.SIGNED_IN, channel = channel, acr = acr,
-            sealedDetails = envelopes.plain(details(SignInType.SIGNED_IN, mapOf("amr" to amr, "tools" to tools))), occurredAt = clock.instant()))
-
-    /** A session of [invitation] ended on purpose; [endedBy] as in [signedOut]. */
-    @Transactional(propagation = Propagation.REQUIRED)
-    fun invitationSignedOut(invitation: InvitationId, channel: String?, endedBy: String) =
-        save(SignInLogEntry(invitation = invitation, signInType = SignInType.SIGNED_OUT, channel = channel,
-            sealedDetails = envelopes.plain(details(SignInType.SIGNED_OUT, mapOf("endedBy" to endedBy))), occurredAt = clock.instant()))
+    fun signedOut(subject: Subject, channel: String?) =
+        record(subject, SignInType.SIGNED_OUT, channel, details = mapOf("endedBy" to "HOLDER"))
 
     @Transactional(readOnly = true)
     fun of(accountId: AccountId): List<SignInRecord> {
@@ -118,8 +110,17 @@ class SignInLog(
         const val DETAILS = "sign-in-log:details"
     }
 
-    private fun save(entry: SignInLogEntry) {
-        repository.save(entry)
+    /** An account's line is sealed with its key; a process access (ADR-48) has none, its line stays plain. */
+    private fun record(subject: Subject, type: SignInType, channel: String?, acr: String? = null, details: Map<String, Any?> = emptyMap()) {
+        when (subject) {
+            is Subject.Account -> record(subject.id, type, channel, acr, details)
+            is Subject.Invitation -> repository.save(
+                SignInLogEntry(
+                    invitation = subject.id, signInType = type, channel = channel, acr = acr,
+                    sealedDetails = envelopes.plain(details(type, details)), occurredAt = clock.instant(),
+                )
+            )
+        }
     }
 
     private fun record(
@@ -128,7 +129,7 @@ class SignInLog(
         // The log goes with the account - a session ending right after its account was deleted
         // (DELETE_ACCOUNT logs the channel out last) has nothing left to log against.
         if (!accounts.existsAccount(accountId)) return
-        save(
+        repository.save(
             SignInLogEntry(
                 accountId = accountId, signInType = type, channel = channel, acr = acr,
                 sealedDetails = claimCrypto.open(accountId).seal(DETAILS, details(type, details)), occurredAt = clock.instant(),

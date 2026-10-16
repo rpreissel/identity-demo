@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.admin
 
+import com.example.identity.core.orchestrator.journey.ChannelEnd
 import com.example.identity.core.account.AccountService
 import com.example.identity.core.orchestrator.domain.ChannelState
 import com.example.identity.core.orchestrator.domain.JourneyFeatureFlag
@@ -55,7 +56,7 @@ class DemoReset(
                 val channel = channelSessionRepository.findByChannelSessionId(id)?.let(LiveChannel::of)
                     ?: return@executeWithoutResult
                 journeyService.findActive(id)?.let { journeyService.cancel(it, channel) }
-                journeyService.endSession(channel, ChannelState.LOGGED_OUT)
+                journeyService.endSession(channel, ChannelEnd.SIGNED_OUT)
             }
         }
         // Rate limits count per address, account and device; a tester starting over must not hit

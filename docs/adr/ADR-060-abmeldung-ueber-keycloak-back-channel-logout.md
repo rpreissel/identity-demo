@@ -45,7 +45,7 @@ Token-Dienst. Dort gab es keinen Web-Kanal, und jede Regel zur Sitzung brauchte 
    derselben Transaktion, und lässt die Keycloak-Sitzung nach dem Commit asynchron beenden
    (`KeycloakSessionLogoutListener`, über die Event Publication Registry mit Wiederholung). Der Back-Channel bestätigt das danach nur noch. Umgekehrt
    ruft ein Ende, das Keycloak selbst gemeldet hat, Keycloak nicht noch einmal an
-   (`ChannelSessionLifecycle.end(..., endedAtKeycloak = true)`): Keycloak wartet in diesem Moment
+   (`ChannelSessionLifecycle.end(..., ChannelEnd.SIGNED_OUT_AT_KEYCLOAK)`): Keycloak wartet in diesem Moment
    noch auf die Antwort des Back-Channels.
 5. **Die Abmeldung steht genau einmal im Anmeldeprotokoll.** Ein Kanal, der als `LOGGED_OUT` endet,
    schreibt sie selbst; haben mehrere Tabs dieselbe Sitzung, schreibt nur der erste. Eine Web-Sitzung ohne laufenden Kanal schreibt `signedOutAtKeycloak`, außer

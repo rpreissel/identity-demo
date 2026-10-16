@@ -70,16 +70,11 @@ class ChannelSessionLifecycle(
      * The one way a channel's login ends: logout, hard logout and expiry alike, so none of them
      * leaves the RefreshToken or the Keycloak session behind. An App channel ends exactly its own
      * Keycloak session; the Web channel's logout stays Keycloak's (docs/07-betrieb.md Abschnitt 3).
-     * [endedAtKeycloak]: Keycloak reported this end itself (back channel), so asking it to end the
-     * session again would only call back into a logout Keycloak is still running.
-     * [recordSignOut] false: another channel of the same Keycloak session writes the one sign-out.
      */
-    fun end(channel: ChannelSession, finalState: ChannelState, endedAtKeycloak: Boolean = false, recordSignOut: Boolean = true) {
-        check(finalState.isTerminal) { "endSession needs a terminal state, got $finalState" }
-        // Only a sign-out someone asked for is one - an expiry is not an event (ADR-39, addendum).
-        if (finalState == ChannelState.LOGGED_OUT && recordSignOut) journeyRecorder.recordSignOut(channel, endedBy = "HOLDER")
+    fun end(channel: ChannelSession, how: ChannelEnd) {
+        if (how.writesSignOut) journeyRecorder.recordSignOut(channel)
         channel.appTokenSessionId?.let { appTokenSessionService.getAppTokenSession(it) }?.let { tokenSession ->
-            if (channel.type == ChannelType.APP && !endedAtKeycloak) {
+            if (channel.type == ChannelType.APP && !how.reportedByKeycloak) {
                 // Published, not called: the Admin API call would hold the transaction open across
                 // a network round trip. KeycloakSessionLogoutListener runs after commit, asynchronously.
                 tokenSession.keycloakSessionId?.let { eventPublisher.publishEvent(KeycloakSessionEnded(it)) }
@@ -92,7 +87,28 @@ class ChannelSessionLifecycle(
         }
         channel.appTokenSessionId = null
         channel.sessionEvidenceId = null
-        channel.state = finalState
+        channel.state = how.finalState
         sessionManagementService.updateChannelSession(channel)
     }
+}
+
+/** How a channel's login ends, and with it what [ChannelSessionLifecycle.end] writes and whom it tells. */
+enum class ChannelEnd(val finalState: ChannelState) {
+    /** Signed out through the orchestrator: by the holder, a hard logout or the demo reset. */
+    SIGNED_OUT(ChannelState.LOGGED_OUT),
+
+    /** The login ran out. */
+    EXPIRED(ChannelState.EXPIRED),
+
+    /** Keycloak reported the sign-out (back channel, ADR-60). */
+    SIGNED_OUT_AT_KEYCLOAK(ChannelState.LOGGED_OUT),
+
+    /** A further channel of a session Keycloak signed out: the first one already wrote the one sign-out. */
+    SIGNED_OUT_AT_KEYCLOAK_ALREADY_LOGGED(ChannelState.LOGGED_OUT);
+
+    /** Only a sign-out someone asked for is one - an expiry is not an event (ADR-39, addendum). */
+    val writesSignOut: Boolean get() = this == SIGNED_OUT || this == SIGNED_OUT_AT_KEYCLOAK
+
+    /** Keycloak ended the session itself; asking it again would only call back into a logout it is still running. */
+    val reportedByKeycloak: Boolean get() = this == SIGNED_OUT_AT_KEYCLOAK || this == SIGNED_OUT_AT_KEYCLOAK_ALREADY_LOGGED
 }

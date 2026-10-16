@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.channel
 
+import com.example.identity.core.orchestrator.journey.ChannelEnd
 import com.example.identity.core.orchestrator.journey.JourneyEndedException
 import com.example.identity.core.orchestrator.session.ChannelSessionEndedException
 import com.example.identity.contract.tool_api.ids.AccountId
@@ -91,9 +92,9 @@ class KeycloakChannelService(
             val recorded = mutableSetOf<Subject?>()
             live.forEach { channel ->
                 journeyService.findActive(channel.session.channelSessionId)?.let { journeyService.cancel(it, channel) }
-                journeyService.endSession(
-                    channel, ChannelState.LOGGED_OUT, endedAtKeycloak = true, recordSignOut = recorded.add(channel.session.subject),
-                )
+                val end = if (recorded.add(channel.session.subject)) ChannelEnd.SIGNED_OUT_AT_KEYCLOAK
+                    else ChannelEnd.SIGNED_OUT_AT_KEYCLOAK_ALREADY_LOGGED
+                journeyService.endSession(channel, end)
             }
             return
         }
@@ -105,10 +106,7 @@ class KeycloakChannelService(
         // An App login's session ends only after its channel did, and that end was written.
         val alreadyWritten = appLogins.isNotEmpty() || webChannels.any { it.state == ChannelState.LOGGED_OUT }
         if (alreadyWritten) return
-        when (subject) {
-            is Subject.Account -> signInLog.signedOut(subject.id, ChannelType.WEB.name, endedBy = "HOLDER")
-            is Subject.Invitation -> signInLog.invitationSignedOut(subject.id, ChannelType.WEB.name, endedBy = "HOLDER")
-        }
+        signInLog.signedOut(subject, ChannelType.WEB.name)
     }
 
     fun upsertChannel(

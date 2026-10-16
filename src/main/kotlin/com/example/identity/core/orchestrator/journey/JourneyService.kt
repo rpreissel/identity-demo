@@ -199,8 +199,7 @@ class JourneyService(
     }
 
     /** Ends the channel's login and with it its Keycloak session ([ChannelSessionLifecycle.end]). */
-    fun endSession(channel: LiveChannel, finalState: ChannelState, endedAtKeycloak: Boolean = false, recordSignOut: Boolean = true) =
-        sessionLifecycle.end(channel.session, finalState, endedAtKeycloak, recordSignOut)
+    fun endSession(channel: LiveChannel, how: ChannelEnd) = sessionLifecycle.end(channel.session, how)
 
     /** Cancels [running] and every ancestor suspended for it, so nothing of the chain is left waiting. */
     private fun cancelChain(running: AuthJourney, channel: ChannelSession) {
@@ -473,7 +472,7 @@ class JourneyService(
         journey.consume(clock.instant())
         journeyRepository.save(journey)
         journeyTraceService.record(channel.forLog(), journey.forLog(), "LOGGED_OUT", journeyState = "LoggedOut")
-        sessionLifecycle.end(channel, ChannelState.LOGGED_OUT)
+        sessionLifecycle.end(channel, ChannelEnd.SIGNED_OUT)
         return Step(next = null)
     }
 
@@ -537,7 +536,7 @@ class JourneyService(
     private fun endWithSession(channel: ChannelSession, cause: RuntimeException): Nothing {
         findActive(channel.channelSessionId)?.let { markCancelledChain(it.entity, channel) }
         journeyTraceService.recordForChannel(channel.forLog(), "EXPIRED")
-        sessionLifecycle.end(channel, ChannelState.EXPIRED)
+        sessionLifecycle.end(channel, ChannelEnd.EXPIRED)
         throw ChannelSessionEndedException("Channel ${channel.channelSessionId} ended with its session: ${cause.message}")
     }
 
