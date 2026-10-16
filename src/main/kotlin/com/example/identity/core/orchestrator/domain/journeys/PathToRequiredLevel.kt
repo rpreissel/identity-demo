@@ -57,13 +57,13 @@ class PathToRequiredLevel(private val afterIdentificationBackTo: ToolFreeState) 
     fun offerNewMethod(ctx: JourneyContext, identifyBeforeEnrolling: Boolean = true, emailObligation: Boolean = false): Transition {
         val account = ctx.requireAccount()
         if (identifyBeforeEnrolling && !(ctx hasReached NEW_METHOD_FLOOR)) {
-            return reIdentifyOr(maxOf(NEW_METHOD_FLOOR, ctx.acrFloor), ctx, resumeWith = afterIdentificationBackTo) {
+            return ReIdentifyJourney.toReachOr(maxOf(NEW_METHOD_FLOOR, ctx.acrFloor), ctx, resumeWith = afterIdentificationBackTo) {
                 Transition.Abort(
                     Text("Fuer die Einrichtung eines neuen Anmeldeverfahrens ist eine frische Identifizierung (mindestens loa2) erforderlich, aktuell ist aber keine Identifizierungsmethode verfuegbar.")
                 )
             }
         }
-        return offer(ctx.enrollmentCandidates()) { Enrolling(it, emailObligation = emailObligation) } ?: reIdentifyOr(ctx.acrFloor, ctx, resumeWith = afterIdentificationBackTo) {
+        return offer(ctx.enrollmentCandidates()) { Enrolling(it, emailObligation = emailObligation) } ?: ReIdentifyJourney.toReachOr(ctx.acrFloor, ctx, resumeWith = afterIdentificationBackTo) {
             // Reachable here means a channel-local reason, e.g. every remaining tool disabled.
             Transition.Abort(ctx.policy.reachability(account, ctx.acrFloor).toEnrollAbortMessage())
         }

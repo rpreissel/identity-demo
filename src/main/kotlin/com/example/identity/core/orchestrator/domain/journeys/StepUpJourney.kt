@@ -63,6 +63,6 @@ object StepUpJourney : Journey<StepUpState> {
     private fun offerReIdentOrGiveUp(goal: Goal, ctx: JourneyContext, whenNone: Transition): Transition {
         if (!goal.allowsReIdentification) return whenNone
         // The whole goal, or the run would forget on return why and how it may step up.
-        return reIdentifyOr(goal.targetAcr, ctx, resumeWith = StepUpState.Start(goal)) { whenNone }
+        return ReIdentifyJourney.toReachOr(goal.targetAcr, ctx, resumeWith = StepUpState.Start(goal)) { whenNone }
     }
 }

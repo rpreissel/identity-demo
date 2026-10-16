@@ -51,7 +51,7 @@ object LookupLoginJourney : JourneyWithoutInput<LookupLoginState> {
             is LookupLoginState.AdditionalFactor -> proving(state, event, ctx)
 
             // The journey ends either way; only Answer.ACCEPT links the device.
-            is DeviceLinkQuestion -> state.deviceLinkAnswered(event, whenDeclined = { Transition.Authenticated }) { Transition.Authenticated }
+            is DeviceLinkQuestion -> state.answered(event, whenDeclined = { Transition.Authenticated }) { Transition.Authenticated }
         }
 
     private fun proving(state: OfferingState, event: JourneyEvent, ctx: JourneyContext): Transition = when (event) {
@@ -75,7 +75,7 @@ object LookupLoginJourney : JourneyWithoutInput<LookupLoginState> {
                 else -> Transition.To(DeviceLinkQuestion(DeviceLinkQuestion.Wording.REBIND))
             }
         }
-        return offer(ctx.authCandidates(), LookupLoginState::AdditionalFactor) ?: reIdentifyOr(ctx.acrFloor, ctx, resumeWith = LookupLoginState.Start) {
+        return offer(ctx.authCandidates(), LookupLoginState::AdditionalFactor) ?: ReIdentifyJourney.toReachOr(ctx.acrFloor, ctx, resumeWith = LookupLoginState.Start) {
             Transition.Abort(ctx.policy.reachability(account, ctx.acrFloor).toAuthAbortMessage())
         }
     }

@@ -1,6 +1,7 @@
 package com.example.identity.core.orchestrator.domain.journeys
 
 import com.example.identity.core.orchestrator.domain.journey.authCandidates
+import com.example.identity.core.orchestrator.domain.journey.offer
 import com.example.identity.core.orchestrator.domain.journey.lookupLoginCandidates
 import com.example.identity.core.orchestrator.domain.journey.JourneyWithoutInput
 import com.example.identity.core.orchestrator.domain.InvitationAcceptance
@@ -11,7 +12,6 @@ import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.core.orchestrator.domain.journey.state.WebSelectMethodState
 import com.example.identity.core.orchestrator.domain.journey.toAuthAbortMessage
-import com.example.identity.contract.tool_api.ToolId
 
 /**
  * The Web entry journey (docs/journeys/web-select-method.md): one `selectMethod` step listing every
@@ -33,7 +33,10 @@ object WebSelectMethodJourney : JourneyWithoutInput<WebSelectMethodState> {
     override fun transition(state: WebSelectMethodState, event: JourneyEvent, ctx: JourneyContext): Transition =
         when (state) {
             is WebSelectMethodState.SelectMethod -> when (event) {
-                is JourneyEvent.OfferExhausted -> ctx.account?.let { reIdentifyOr(ctx.acrFloor, ctx, resumeWith = WebSelectMethodState.Start) { Transition.Cancel } } ?: Transition.Cancel
+                // Nothing left on offer: a step-up may still identify again, a first login just ends.
+                is JourneyEvent.OfferExhausted ->
+                    if (ctx.account == null) Transition.Cancel
+                    else ReIdentifyJourney.toReachOr(ctx.acrFloor, ctx, resumeWith = WebSelectMethodState.Start) { Transition.Cancel }
                 else -> afterProof(ctx)
             }
 
@@ -51,24 +54,15 @@ object WebSelectMethodJourney : JourneyWithoutInput<WebSelectMethodState> {
             return if (ctx hasReached ctx.acrFloor) Transition.Authenticated
             else Transition.Abort(InvitationAcceptance.Refusal.BELOW_REQUIRED_LEVEL.text)
         }
+        // Without an account nobody can be identified: only lookup-login tools, never enrollment.
         val account = ctx.account
-        if (account != null && ctx hasReached ctx.acrFloor) return Transition.Authenticated
-        val next = selectMethod(ctx)
-        if (account == null || next.offer.offered.isNotEmpty()) return Transition.To(next)
+            ?: return Transition.To(WebSelectMethodState.SelectMethod(Offer(ctx.lookupLoginCandidates()), accountAlreadyKnown = false))
+        if (ctx hasReached ctx.acrFloor) return Transition.Authenticated
         // No method of this account can close the gap here: identifying again can, as in STEP_UP.
         // Failing that, say why instead of handing Keycloak an empty selection.
-        return reIdentifyOr(ctx.acrFloor, ctx, resumeWith = WebSelectMethodState.Start) {
-            Transition.Abort(ctx.policy.reachability(account, ctx.acrFloor).toAuthAbortMessage())
-        }
+        return offer(ctx.authCandidates()) { WebSelectMethodState.SelectMethod(it, accountAlreadyKnown = true) }
+            ?: ReIdentifyJourney.toReachOr(ctx.acrFloor, ctx, resumeWith = WebSelectMethodState.Start) {
+                Transition.Abort(ctx.policy.reachability(account, ctx.acrFloor).toAuthAbortMessage())
+            }
     }
-
-    private fun selectMethod(ctx: JourneyContext) =
-        WebSelectMethodState.SelectMethod(Offer(candidatesFor(ctx)), accountAlreadyKnown = ctx.account != null)
-
-    /**
-     * Never enrollment, and identification only as the step-up's way out (`RE_IDENTIFY`, see
-     * [afterProof]), never as a first login: without an account there is nobody to identify.
-     */
-    private fun candidatesFor(ctx: JourneyContext): List<ToolId> =
-        if (ctx.account == null) ctx.lookupLoginCandidates() else ctx.authCandidates()
 }

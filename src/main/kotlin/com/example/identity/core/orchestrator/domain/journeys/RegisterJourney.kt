@@ -79,10 +79,10 @@ object RegisterJourney : JourneyWithoutInput<RegisterState> {
             is DeviceLinkQuestion -> when (state.wording) {
                 // Asked at the end ("Enrollment zuerst"): the registration is done either way;
                 // declined, the account stays usable through the lookup tools.
-                DeviceLinkQuestion.Wording.REBIND -> state.deviceLinkAnswered(event, whenDeclined = { Transition.Authenticated }) { Transition.Authenticated }
+                DeviceLinkQuestion.Wording.REBIND -> state.answered(event, whenDeclined = { Transition.Authenticated }) { Transition.Authenticated }
                 // Asked right after the identification: declining is giving up, since no method is
                 // offered on a device that stays someone else's.
-                else -> state.deviceLinkAnswered(event, whenDeclined = { Transition.Cancel }) { afterIdentification(ctx) }
+                else -> state.answered(event, whenDeclined = { Transition.Cancel }) { afterIdentification(ctx) }
             }
 
             is RegisterState.Assigning -> when (event) {
@@ -213,4 +213,7 @@ object RegisterJourney : JourneyWithoutInput<RegisterState> {
     private fun finishOrOfferRebind(ctx: JourneyContext): Transition =
         if (ctx.account != null && ctx.deviceLinkedElsewhere()) Transition.To(DeviceLinkQuestion(DeviceLinkQuestion.Wording.REBIND))
         else Transition.Authenticated
+
+    /** This device is durably linked to an account other than the one in hand (docs/04-orchestrierung.md #2, "Zweitaccount"). */
+    private fun JourneyContext.deviceLinkedElsewhere(): Boolean = linkedAccountId != null && linkedAccountId != account?.accountId
 }

@@ -12,6 +12,7 @@ import com.example.identity.core.orchestrator.domain.journey.Answer
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.ReIdentifyState
+import com.example.identity.core.orchestrator.domain.journey.state.ToolFreeState
 
 /**
  * "No active method reaches the target, re-identify instead?" (docs/journeys/re-identify.md).
@@ -27,6 +28,20 @@ object ReIdentifyJourney : Journey<ReIdentifyState> {
     /** A fresh identification because nothing else reaches [targetAcr]. */
     fun toReach(targetAcr: AcrLevel): JourneyStart<*> =
         JourneyStart(this, ReIdentifyState.OfferReIdent(targetAcr, ReIdentifyState.Kind.RECOVERY))
+
+    /**
+     * [toReach] when an identification can reach [targetAcr] on this channel, [whenNone] otherwise.
+     * [resumeWith] is where the asking journey carries on once the sub-journey returns. A required
+     * sub-journey: declining it cancels the asking journey.
+     */
+    internal inline fun toReachOr(
+        targetAcr: AcrLevel,
+        ctx: JourneyContext,
+        resumeWith: ToolFreeState,
+        whenNone: () -> Transition
+    ): Transition =
+        if (ctx.reIdentificationCandidates(targetAcr).isNotEmpty()) Transition.RequireSubJourney(toReach(targetAcr), resumeWith = resumeWith)
+        else whenNone()
 
     /** Identification as an optional extra for a never-identified account; request it as optional. */
     fun offerOptionally(targetAcr: AcrLevel): JourneyStart<*> =
