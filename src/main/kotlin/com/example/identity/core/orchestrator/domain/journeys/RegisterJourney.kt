@@ -64,7 +64,7 @@ object RegisterJourney : JourneyWithoutInput<RegisterState> {
 
             is AuthChoice -> when (event) {
                 // Nothing else provable is left: identification is the only way forward.
-                is JourneyEvent.OfferExhausted -> toRequiredLevel.nextWithout(event.declined, ctx) { offerIdentification(ctx) }
+                is JourneyEvent.OfferExhausted -> toRequiredLevel.nextWithoutOr(event.declined, ctx) { offerIdentification(ctx) }
                 // No factor-kind or email obligation: a rediscovered, set-up account finishing here
                 // is an ordinary login, not a fresh registration.
                 else -> toRequiredLevel.nextAfterProof(ctx)

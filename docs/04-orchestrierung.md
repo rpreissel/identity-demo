@@ -306,7 +306,7 @@ behandeln alle Zustände gleich: Er bringt die Journey weiter. Verschieden ist n
   der beiden als `PathToRequiredLevel`: erst die Verfahren des Kontos (`AuthChoice`), dann ein
   neues Verfahren (`Enrolling`), zuletzt eine frische Identifizierung. Im Zustandsautomaten liest
   sich das als `toRequiredLevel.nextAfterProof(ctx)`, `nextAfterEnrollment(ctx)` und
-  `nextWithout(declined, ctx) { … }`.
+  `nextWithoutOr(declined, ctx) { … }`.
 - In einem **Pflichtzustand** führt Ablehnen nicht weiter. Die Pflicht bleibt bestehen, und das
   volle Angebot kommt zurück, auch das gerade verworfene Tool. Nur wer die Pflicht erfüllt, kommt
   weiter.

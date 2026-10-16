@@ -35,13 +35,13 @@ object FastAccessJourney : JourneyWithoutInput<FastAccessState> {
                 else -> firstOffer(ctx)
             }
             is FastAccessState.PreferredAuth -> when (event) {
-                is JourneyEvent.Abandoned -> toRequiredLevel.nextWithout(setOf(state.toolId), ctx) { requireRegister() }
+                is JourneyEvent.Abandoned -> toRequiredLevel.nextWithoutOr(setOf(state.toolId), ctx) { requireRegister() }
                 else -> toRequiredLevel.nextAfterProof(ctx)
             }
 
             is AuthChoice -> when (event) {
                 // Nothing else provable is left on this device: hand off to a fresh identification.
-                is JourneyEvent.OfferExhausted -> toRequiredLevel.nextWithout(event.declined, ctx) { requireRegister() }
+                is JourneyEvent.OfferExhausted -> toRequiredLevel.nextWithoutOr(event.declined, ctx) { requireRegister() }
                 else -> toRequiredLevel.nextAfterProof(ctx)
             }
 
@@ -50,11 +50,16 @@ object FastAccessJourney : JourneyWithoutInput<FastAccessState> {
 
     // Offers -------------------------------------------------------------------
 
+    /** The device's key first, then the account's other methods; without either, a registration. */
     private fun firstOffer(ctx: JourneyContext): Transition {
         val account = ctx.account ?: return requireRegister()
-        CandidateTools.preferredDeviceAuth(account, ctx)?.let { return Transition.To(FastAccessState.PreferredAuth(it)) }
-        val candidates = CandidateTools.forAuth(account, ctx.acrFloor, ctx)
-        return if (candidates.isNotEmpty()) Transition.To(AuthChoice(Offer(candidates))) else requireRegister()
+        val deviceKey = CandidateTools.preferredDeviceAuth(account, ctx)
+        val methods = CandidateTools.forAuth(account, ctx.acrFloor, ctx)
+        return when {
+            deviceKey != null -> Transition.To(FastAccessState.PreferredAuth(deviceKey))
+            methods.isNotEmpty() -> Transition.To(AuthChoice(Offer(methods)))
+            else -> requireRegister()
+        }
     }
 
     /**

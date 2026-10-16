@@ -43,7 +43,7 @@ class PathToRequiredLevel(private val afterIdentificationBackTo: JourneyState) {
     }
 
     /** The account's methods without the [declined] ones, or [otherwise] when none is left (or there is no account yet). */
-    fun nextWithout(declined: Set<ToolId>, ctx: JourneyContext, otherwise: () -> Transition): Transition {
+    fun nextWithoutOr(declined: Set<ToolId>, ctx: JourneyContext, otherwise: () -> Transition): Transition {
         val remaining = ctx.account?.let { CandidateTools.forAuth(it, ctx.acrFloor, ctx) - declined }.orEmpty()
         return if (remaining.isNotEmpty()) Transition.To(AuthChoice(Offer(remaining))) else otherwise()
     }
