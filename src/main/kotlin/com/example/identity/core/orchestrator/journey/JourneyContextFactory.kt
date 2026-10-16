@@ -1,6 +1,8 @@
 package com.example.identity.core.orchestrator.journey
 
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
+import com.example.identity.core.orchestrator.domain.journey.SigningIn
+import com.example.identity.contract.tool_api.Subject
 import com.example.identity.core.account.AccountService
 import com.example.identity.core.orchestrator.domain.policy.SessionEvidence
 import com.example.identity.core.orchestrator.domain.policy.AuthPolicy
@@ -31,12 +33,10 @@ class JourneyContextFactory(
     private val featureFlagProviders: List<FeatureFlagProvider>
 ) {
     fun contextFor(journey: AuthJourney, channel: ChannelSession): JourneyContext {
-        val accountId = channel.accountId
         val evidence = channel.sessionEvidenceId?.let { sessionEvidenceService.getSessionEvidence(it) }
         return JourneyContext(
             channel = channel.type,
-            account = accountId?.let { accountService.findAccount(it) },
-            invitation = channel.invitation,
+            signingIn = signingInOf(channel),
             evidence = evidence?.toCoreEvidence() ?: SessionEvidence(emptyList()),
             acrFloor = channel.acrFloor,
             bindingKeyRef = channel.bindingKeyRef,
@@ -46,6 +46,12 @@ class JourneyContextFactory(
             availableTools = routing.availableToolsOf(channel),
             featureFlags = journey.featureFlags
         )
+    }
+
+    private fun signingInOf(channel: ChannelSession): SigningIn = when (val subject = channel.subject) {
+        is Subject.Account -> accountService.findAccount(subject.id)?.let { SigningIn.Holder(it) } ?: SigningIn.Unknown
+        is Subject.Invitation -> SigningIn.ProcessAccess(subject.id)
+        null -> SigningIn.Unknown
     }
 
     /** The switches active right now; a journey takes them over once, when it starts. */

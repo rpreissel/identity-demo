@@ -22,8 +22,8 @@ data class JourneyContext(
      * never infers the channel type from [bindingKeyRef] being null.
      */
     val channel: ChannelType,
-    /** The account this journey concerns, `null` before any identification or lookup. */
-    val account: AccountProfile?,
+    /** Who this channel is signing in: nobody yet, an account, or a process access. */
+    val signingIn: SigningIn,
     /** What this channel's session has already proven. */
     val evidence: SessionEvidence,
     /** The channel's durable lower bound, not a single run's target (that lives in the state). */
@@ -45,13 +45,11 @@ data class JourneyContext(
      * Runtime feature flags enabled when this journey started ([JourneyFeatureFlag] names them). Resolved here because a
      * journey never depends on a `@Service` itself.
      */
-    val featureFlags: Set<JourneyFeatureFlag> = emptySet(),
-    /**
-     * The invitation this channel signed in with instead of an account
-     * (docs/adr/ADR-048-vorgangszugang-mit-einmalkennwort.md). Never set together with [account].
-     */
-    val invitation: InvitationId? = null
+    val featureFlags: Set<JourneyFeatureFlag> = emptySet()
 ) {
+    /** The account this journey concerns; `null` before any identification or lookup, and for a process access. */
+    val account: AccountProfile? get() = (signingIn as? SigningIn.Holder)?.account
+
     /**
      * The resolved account, for states that cannot be reached without one (step-up, method change,
      * deletion). There a missing account is a broken state machine, so this crashes.
@@ -70,4 +68,16 @@ data class JourneyContext(
 
     /** Could the account in hand reach [acr] in a future login with the methods it has now? */
     infix fun canReach(acr: AcrLevel): Boolean = policy.reachability(requireAccount(), acr) is Reachability.Reachable
+}
+
+/** Who a channel is signing in. One of three, never two at once. */
+sealed interface SigningIn {
+    /** Nobody yet: before any identification or lookup. */
+    data object Unknown : SigningIn
+
+    /** The holder of an account. */
+    data class Holder(val account: AccountProfile) : SigningIn
+
+    /** A process access with its one-time password (docs/adr/ADR-048-vorgangszugang-mit-einmalkennwort.md). */
+    data class ProcessAccess(val invitation: InvitationId) : SigningIn
 }

@@ -21,6 +21,7 @@ import com.example.identity.tools.ident_kvnr.KvnrModule
 import com.example.identity.tools.ident_nect.NectModule
 import com.example.identity.contract.tool_api.Tool
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
+import com.example.identity.core.orchestrator.domain.journey.SigningIn
 import com.example.identity.core.orchestrator.domain.policy.SessionEvidence
 import com.example.identity.core.orchestrator.domain.policy.DefaultAuthPolicy
 import com.example.identity.core.orchestrator.tool.ToolHandlerRegistry
@@ -154,5 +155,8 @@ object JourneyTestFixtures {
         linkedAccountId: AccountId? = account?.accountId,
         availableTools: Set<ToolId> = allToolIds,
         channel: ChannelType = ChannelType.APP
-    ) = JourneyContext(channel, account, evidence, acrFloor, bindingKeyRef, linkedAccountId, policy, catalog, availableTools)
+    ) = JourneyContext(
+        channel, account?.let { SigningIn.Holder(it) } ?: SigningIn.Unknown, evidence, acrFloor, bindingKeyRef,
+        linkedAccountId, policy, catalog, availableTools
+    )
 }

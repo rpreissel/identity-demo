@@ -6,6 +6,7 @@ import com.example.identity.core.orchestrator.domain.journey.JourneyWithoutInput
 import com.example.identity.core.account.AccountProfile
 import com.example.identity.core.orchestrator.domain.InvitationAcceptance
 import com.example.identity.core.orchestrator.domain.journey.OpensWebChannel
+import com.example.identity.core.orchestrator.domain.journey.SigningIn
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
@@ -49,13 +50,13 @@ object WebSelectMethodJourney : JourneyWithoutInput<WebSelectMethodState> {
     /** Done once the channel's floor is proven; otherwise what can still prove more depends on who is signing in. */
     private fun finishOrOfferMore(ctx: JourneyContext): Transition {
         if (ctx hasReached ctx.acrFloor) return Transition.Authenticated
-        return when {
+        return when (val signingIn = ctx.signingIn) {
             // A process access has its one proof and nothing else to offer. Its level was checked on
             // acceptance (InvitationAcceptance); this catches what the level alone does not say,
             // such as a second factor the floor demands.
-            ctx.invitation != null -> Transition.Abort(InvitationAcceptance.Refusal.BELOW_REQUIRED_LEVEL.text)
-            ctx.account == null -> offerLookupLogin(ctx)
-            else -> offerStepUp(ctx.account, ctx)
+            is SigningIn.ProcessAccess -> Transition.Abort(InvitationAcceptance.Refusal.BELOW_REQUIRED_LEVEL.text)
+            SigningIn.Unknown -> offerLookupLogin(ctx)
+            is SigningIn.Holder -> offerStepUp(signingIn.account, ctx)
         }
     }
 
