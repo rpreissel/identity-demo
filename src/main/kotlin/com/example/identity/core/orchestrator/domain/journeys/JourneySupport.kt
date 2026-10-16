@@ -45,7 +45,7 @@ internal inline fun reIdentifyOr(
     whenNone: () -> Transition
 ): Transition =
     if (CandidateTools.forReIdentification(targetAcr, ctx).isNotEmpty()) {
-        Transition.RequireSubJourney(ReIdentifyJourney, seedWith = ReIdentifyState.forSubJourney(targetAcr, wording), resumeWith = resumeWith, optional = optional)
+        Transition.RequireSubJourney(ReIdentifyJourney.toReach(targetAcr, wording), resumeWith = resumeWith, optional = optional)
     } else {
         whenNone()
     }

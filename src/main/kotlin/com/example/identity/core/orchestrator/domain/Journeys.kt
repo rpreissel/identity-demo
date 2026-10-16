@@ -1,6 +1,7 @@
 package com.example.identity.core.orchestrator.domain
 
 import com.example.identity.core.orchestrator.domain.journey.Journey
+import com.example.identity.core.orchestrator.domain.journey.JourneyWithoutInput
 import com.example.identity.core.orchestrator.domain.journey.OnlyAsSubJourney
 import com.example.identity.core.orchestrator.domain.journey.opensChannelOn
 import com.example.identity.core.orchestrator.domain.journeys.ConfirmPeerLoginJourney
@@ -16,7 +17,7 @@ import com.example.identity.core.orchestrator.domain.journeys.WebSelectMethodJou
 
 /**
  * Every kind of journey (docs/04-orchestrierung.md #2). The one place a new kind is added; its
- * start points and its behaviour live in its own object.
+ * start points, how it begins and its behaviour live in its own object.
  */
 object Journeys {
     val all: List<Journey<*>> = listOf(
@@ -41,6 +42,10 @@ object Journeys {
             require(points.isNotEmpty()) { "${journey.name} names no start point" }
             require(points.map { it::class }.distinct().size == points.size) { "${journey.name} names a start point twice" }
             require(OnlyAsSubJourney !in points || points.size == 1) { "${journey.name}: OnlyAsSubJourney stands alone" }
+            // A cancelled run restarts the channel's entry journey, with nobody there to give input.
+            require(journey is JourneyWithoutInput<*> || ChannelType.entries.none(journey::opensChannelOn)) {
+                "${journey.name} opens a channel, so it must begin without input"
+            }
         }
     }
 

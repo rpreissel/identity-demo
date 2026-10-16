@@ -15,19 +15,21 @@ sealed interface Transition {
     data class To(val state: JourneyState) : Transition
 
     /**
-     * Run [journey] first, seeded at [seedWith] (e.g. `StepUpState.forSubJourney(...)`), then resume
-     * this journey at [resumeWith] once it finishes.
+     * Run the journey [start] names first (e.g. `StepUpJourney.toward(goal)`), then resume this
+     * journey at [resumeWith] once it finishes. [resumeWith] must be a state of this journey;
+     * `JourneyService` checks that, since a transition does not know whose it is.
      *
      * [optional] says what a cancelled sub-journey means. Not optional (the usual case): it was a
      * precondition, so this journey is cancelled with it, without being asked. Optional: this
      * journey resumes at [resumeWith] with [JourneyEvent.SubJourneyCancelled] and decides itself.
      */
     data class RequireSubJourney(
-        val journey: Journey<*>,
-        val seedWith: JourneyState,
+        val start: JourneyStart,
         val resumeWith: JourneyState,
         val optional: Boolean = false,
     ) : Transition {
+        val journey: Journey<*> get() = start.journey
+
         init {
             // [resumeWith] is reactivated only after the sub-journey ran, with new evidence and
             // possibly other methods. A frozen candidate list would be re-offered as current, so

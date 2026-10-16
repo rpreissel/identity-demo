@@ -60,8 +60,7 @@ class DeleteAccountJourneyTest : BehaviorSpec({
             then("parks the wish and requires loa2 plus a fresh proof - only NOW, never before accepting, and never decided here (ADR-61)") {
                 transition shouldBe
                     Transition.RequireSubJourney(
-                        FreshProofJourney,
-                        seedWith = FreshProofState.forSubJourney(AcrLevel.LOA2, FreshProofState.Purpose.DELETE_ACCOUNT),
+                        FreshProofJourney.before(FreshProofState.Purpose.DELETE_ACCOUNT, AcrLevel.LOA2),
                         resumeWith = DeleteAccountState.ConfirmPending
                     )
             }
@@ -74,8 +73,8 @@ class DeleteAccountJourneyTest : BehaviorSpec({
         `when`("the confirmation is accepted") {
             val transition = journey.transition(DeleteAccountState.ConfirmPending, JourneyEvent.Answered(Answer.ACCEPT), theCtx)
             then("requires only loa1 - selfServiceAcrFloor, not a second definition") {
-                transition.shouldBeInstanceOf<Transition.RequireSubJourney>().seedWith
-                    .shouldBeInstanceOf<FreshProofState.Start>().requiredAcr shouldBe AcrLevel.LOA1
+                transition.shouldBeInstanceOf<Transition.RequireSubJourney>().start shouldBe
+                    FreshProofJourney.before(FreshProofState.Purpose.DELETE_ACCOUNT, AcrLevel.LOA1)
             }
         }
     }

@@ -10,7 +10,6 @@ import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.WebSelectMethodState
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
-import com.example.identity.core.orchestrator.domain.journey.state.ReIdentifyState
 import com.example.identity.core.orchestrator.domain.policy.SessionEvidence
 import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.account
 import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.ctx
@@ -140,8 +139,7 @@ class WebSelectMethodJourneyTest : BehaviorSpec({
 
             then("it requires RE_IDENTIFY and resumes where the offer is built anew") {
                 transition shouldBe Transition.RequireSubJourney(
-                    ReIdentifyJourney,
-                    seedWith = ReIdentifyState.forSubJourney(AcrLevel.LOA2),
+                    ReIdentifyJourney.toReach(AcrLevel.LOA2),
                     resumeWith = WebSelectMethodState.AfterIdentification
                 )
             }

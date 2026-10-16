@@ -3,7 +3,6 @@ package com.example.identity.core.orchestrator.channel
 import com.example.identity.core.orchestrator.domain.journey.Answer
 import com.example.identity.core.orchestrator.domain.policy.MethodEvidence
 import com.example.identity.core.orchestrator.journey.JourneyEndedException
-import com.example.identity.core.orchestrator.domain.journey.state.JourneyState
 import com.example.identity.core.orchestrator.journey.Step
 import com.example.identity.contract.tool_api.ToolVersion
 import com.example.identity.contract.tool_api.InvalidInputException
@@ -17,11 +16,11 @@ import com.example.identity.core.account.AccountService
 import com.example.identity.core.orchestrator.domain.OrchestratorException
 import com.example.identity.core.orchestrator.domain.Journeys
 import com.example.identity.core.orchestrator.domain.journey.Journey
+import com.example.identity.core.orchestrator.domain.journey.JourneyStart
 import com.example.identity.core.orchestrator.domain.journey.StartRefusal
 import com.example.identity.core.orchestrator.domain.journey.StartingAccount
 import com.example.identity.core.orchestrator.domain.journey.appChannelOpening
 import com.example.identity.core.orchestrator.domain.journey.startRefusal
-import com.example.identity.core.orchestrator.domain.journey.state.StepUpState
 import com.example.identity.core.orchestrator.domain.journey.state.upTo
 import com.example.identity.core.orchestrator.domain.journeys.ConfirmPeerLoginJourney
 import com.example.identity.core.orchestrator.domain.journeys.DeleteAccountJourney
@@ -225,10 +224,10 @@ class ChannelService(
     }
 
     /** Starts [journey] on a live channel that may start it, and answers with its first step. */
-    private fun startJourney(channelSessionId: ChannelSessionId, bindingKeyRef: String, journey: Journey<*>, seed: JourneyState? = null): ChannelResponse {
+    private fun startJourney(channelSessionId: ChannelSessionId, bindingKeyRef: String, start: JourneyStart): ChannelResponse {
         val live = channelAccessGuard.requireLiveChannel(channelSessionId, bindingKeyRef)
-        requireStartable(live, journey)
-        return respondAfter(channelSessionId, journeyService.start(live, journey, seed = seed))
+        requireStartable(live, start.journey)
+        return respondAfter(channelSessionId, journeyService.start(live, start))
     }
 
     /** The channel as the journey left it, with the journey's next [step]. */
@@ -256,7 +255,7 @@ class ChannelService(
         if (authPolicy.isSatisfied(currentEvidence(refreshed), floor, account)) return responseAssembler.respond(refreshed)
 
         val startingAcr = authPolicy.resolveAcr(currentEvidence(refreshed), account)
-        val step = journeyService.start(live, StepUpJourney, seed = StepUpState.forSubJourney(startingAcr upTo floor))
+        val step = journeyService.start(live, StepUpJourney.toward(startingAcr upTo floor))
         return respondAfter(channelSessionId, step)
     }
 
@@ -341,8 +340,8 @@ class ChannelService(
         return startManage(channelSessionId, bindingKeyRef, ManageAuthMethodsState.RetractAttributeRequested(attributeType))
     }
 
-    private fun startManage(channelSessionId: ChannelSessionId, bindingKeyRef: String, wish: ManageAuthMethodsState): ChannelResponse {
-        return startJourney(channelSessionId, bindingKeyRef, ManageAuthMethodsJourney, seed = wish)
+    private fun startManage(channelSessionId: ChannelSessionId, bindingKeyRef: String, wish: ManageAuthMethodsState.Wish): ChannelResponse {
+        return startJourney(channelSessionId, bindingKeyRef, ManageAuthMethodsJourney.toCarryOut(wish))
     }
 
     /**
@@ -351,10 +350,7 @@ class ChannelService(
      * both reach [ConfirmPeerLoginState.Requested].
      */
     fun startPeerLogin(channelSessionId: ChannelSessionId, bindingKeyRef: String): ChannelResponse {
-        return startJourney(
-            channelSessionId, bindingKeyRef, ConfirmPeerLoginJourney,
-            seed = ConfirmPeerLoginState.Requested
-        )
+        return startJourney(channelSessionId, bindingKeyRef, ConfirmPeerLoginJourney.start())
     }
 
     /**
@@ -362,7 +358,7 @@ class ChannelService(
      * then the deletion (docs/05-api.md #3a, "Konto löschen").
      */
     fun startDeleteAccount(channelSessionId: ChannelSessionId, bindingKeyRef: String): ChannelResponse {
-        return startJourney(channelSessionId, bindingKeyRef, DeleteAccountJourney)
+        return startJourney(channelSessionId, bindingKeyRef, DeleteAccountJourney.start())
     }
 
     /** Applies [startRefusal] before a journey starts on an already open [channel]. */

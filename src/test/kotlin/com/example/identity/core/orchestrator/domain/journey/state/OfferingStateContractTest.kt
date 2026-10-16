@@ -44,7 +44,7 @@ class OfferingStateContractTest : BehaviorSpec({
         Long::class -> 1L
         UUID::class -> UUID.randomUUID()
         ManageAuthMethodsState.Wish::class -> ManageAuthMethodsState.AddRequested
-        FreshProofState.Purpose::class -> FreshProofState.Purpose.GENERIC
+        FreshProofState.Purpose::class -> FreshProofState.Purpose.MANAGE_METHODS
         StepUpState.Goal::class -> AcrLevel.LOA1 upTo AcrLevel.LOA2
         else -> null
     }

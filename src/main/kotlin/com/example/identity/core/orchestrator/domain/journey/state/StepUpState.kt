@@ -25,13 +25,6 @@ sealed interface StepUpState : JourneyState {
         val reason: Reason? = null
     )
 
-    companion object {
-        /**
-         * The seed for [com.example.identity.core.orchestrator.domain.journey.Transition.RequireSubJourney]
-         * when STEP_UP runs as a precondition (docs/04-orchestrierung.md #7).
-         */
-        fun forSubJourney(goal: Goal): StepUpState = Start(goal)
-    }
 
     /** Why a caller needs this step-up, when it has more to say than the generic wording. */
     enum class Reason {

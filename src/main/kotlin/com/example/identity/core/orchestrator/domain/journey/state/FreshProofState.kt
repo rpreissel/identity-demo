@@ -9,7 +9,7 @@ import com.example.identity.contract.tool_api.claims.AcrLevel
 /**
  * The sub-journey behind every self-service action on a signed-in channel
  * (docs/journeys/fresh-proof.md, ADR-61): the session must clear [requiredAcr], and its latest
- * proof must be recent, else one active factor is re-proven. Reached only through [forSubJourney].
+ * proof must be recent, else one active factor is re-proven. Reached only through `FreshProofJourney.before`.
  * The caller's [purpose] words the screens; what the proof then authorizes is the caller's.
  */
 sealed interface FreshProofState : JourneyState {
@@ -26,18 +26,9 @@ sealed interface FreshProofState : JourneyState {
         val allowReIdentification: Boolean = true,
         val stepUpReason: StepUpState.Reason? = null,
     ) {
-        GENERIC,
         DELETE_ACCOUNT,
         MANAGE_METHODS,
         PEER_LOGIN(allowReIdentification = false, stepUpReason = StepUpState.Reason.PEER_LOGIN),
-    }
-
-    companion object {
-        /**
-         * The seed for [com.example.identity.core.orchestrator.domain.journey.Transition.RequireSubJourney],
-         * so callers never construct [Start] themselves.
-         */
-        fun forSubJourney(requiredAcr: AcrLevel, purpose: Purpose): FreshProofState = Start(requiredAcr, purpose)
     }
 
     /** The check itself, and the state parked while the step-up it required runs. */
@@ -65,13 +56,11 @@ sealed interface FreshProofState : JourneyState {
         // selectionContext names the kind of offer, not the journey.
         override val selectionContext: String get() = "auth"
         override val selectionTitle: Text get() = when (purpose) {
-            Purpose.GENERIC -> Text("Anmeldeverfahren bestätigen")
             Purpose.DELETE_ACCOUNT -> Text("Konto löschen – Anmeldeverfahren bestätigen")
             Purpose.MANAGE_METHODS -> Text("Anmeldeverfahren verwalten – Anmeldeverfahren bestätigen")
             Purpose.PEER_LOGIN -> Text("Web-Login bestätigen – Anmeldeverfahren bestätigen")
         }
         override val selectionDescription: Text get() = when (purpose) {
-            Purpose.GENERIC -> Text("Ihr letzter Nachweis liegt länger zurück. Bitte bestätigen Sie noch einmal eines Ihrer Anmeldeverfahren.")
             Purpose.DELETE_ACCOUNT -> Text("Bevor Ihr Konto gelöscht wird, bestätigen Sie bitte noch einmal eines Ihrer Anmeldeverfahren.")
             Purpose.MANAGE_METHODS -> Text("Ihr letzter Nachweis liegt länger zurück. Bitte bestätigen Sie zuerst eines Ihrer Anmeldeverfahren.")
             Purpose.PEER_LOGIN -> Text("Bevor Sie den Web-Login bestätigen, bestätigen Sie bitte noch einmal eines Ihrer Anmeldeverfahren.")

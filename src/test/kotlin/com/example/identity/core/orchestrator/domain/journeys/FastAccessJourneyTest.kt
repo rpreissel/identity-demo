@@ -9,8 +9,6 @@ import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.core.orchestrator.domain.journey.state.AuthChoice
 import com.example.identity.core.orchestrator.domain.journey.state.Enrolling
 import com.example.identity.core.orchestrator.domain.journey.state.FastAccessState
-import com.example.identity.core.orchestrator.domain.journey.state.ReIdentifyState
-import com.example.identity.core.orchestrator.domain.journey.state.RegisterState
 import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.BINDING_KEY
 import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.account
 import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.ctx
@@ -40,7 +38,7 @@ class FastAccessJourneyTest : BehaviorSpec({
             val transition = journey.transition(FastAccessState.Start, JourneyEvent.Started, ctx(account = null))
             then("hands off to REGISTER's own journey to identify") {
                 transition shouldBe
-                    Transition.RequireSubJourney(RegisterJourney, seedWith = RegisterState.Start, resumeWith = FastAccessState.Start)
+                    Transition.RequireSubJourney(RegisterJourney.start(), resumeWith = FastAccessState.Start)
             }
         }
     }
@@ -73,7 +71,7 @@ class FastAccessJourneyTest : BehaviorSpec({
             val transition = journey.transition(FastAccessState.Start, JourneyEvent.Started, ctx(account = acc))
             then("hands off to REGISTER's own journey rather than a dead end") {
                 transition shouldBe
-                    Transition.RequireSubJourney(RegisterJourney, seedWith = RegisterState.Start, resumeWith = FastAccessState.Start)
+                    Transition.RequireSubJourney(RegisterJourney.start(), resumeWith = FastAccessState.Start)
             }
         }
     }
@@ -121,7 +119,7 @@ class FastAccessJourneyTest : BehaviorSpec({
             val transition = journey.transition(exhausted as FastAccessState, JourneyEvent.OfferExhausted(exhausted.declined), ctx(account = acc))
             then("hands off to REGISTER's own journey, same as an account with nothing usable at all") {
                 transition shouldBe
-                    Transition.RequireSubJourney(RegisterJourney, seedWith = RegisterState.Start, resumeWith = FastAccessState.Start)
+                    Transition.RequireSubJourney(RegisterJourney.start(), resumeWith = FastAccessState.Start)
             }
         }
     }
@@ -150,8 +148,7 @@ class FastAccessJourneyTest : BehaviorSpec({
             then("requires the shared RE_IDENTIFY sub-journey instead of aborting") {
                 transition shouldBe
                     Transition.RequireSubJourney(
-                        ReIdentifyJourney,
-                        seedWith = ReIdentifyState.forSubJourney(AcrLevel.LOA2),
+                        ReIdentifyJourney.toReach(AcrLevel.LOA2),
                         resumeWith = FastAccessState.Start
                     )
             }
@@ -184,8 +181,7 @@ class FastAccessJourneyTest : BehaviorSpec({
             then("requires RE_IDENTIFY before any enrollment - a loa1 session never enrolls a method") {
                 transition shouldBe
                     Transition.RequireSubJourney(
-                        ReIdentifyJourney,
-                        seedWith = ReIdentifyState.forSubJourney(AcrLevel.LOA2),
+                        ReIdentifyJourney.toReach(AcrLevel.LOA2),
                         resumeWith = FastAccessState.Start
                     )
             }
@@ -202,8 +198,7 @@ class FastAccessJourneyTest : BehaviorSpec({
             then("requires RE_IDENTIFY instead of offering the next enrollment") {
                 transition shouldBe
                     Transition.RequireSubJourney(
-                        ReIdentifyJourney,
-                        seedWith = ReIdentifyState.forSubJourney(AcrLevel.LOA2),
+                        ReIdentifyJourney.toReach(AcrLevel.LOA2),
                         resumeWith = FastAccessState.Start
                     )
             }

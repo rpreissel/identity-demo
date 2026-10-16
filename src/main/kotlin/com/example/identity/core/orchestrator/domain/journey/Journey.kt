@@ -43,15 +43,39 @@ interface Journey<S : JourneyState> {
      */
     val stateRoots: List<KClass<out S>>
 
-    /** Where a fresh run begins, before any event has been seen. */
-    fun initialState(ctx: JourneyContext): S
-
     /**
      * The transition function. After a [Transition.Perform], JourneyService executes the [Action],
      * refreshes the [JourneyContext] and calls this again with [JourneyEvent.ActionCompleted], so
      * follow-up logic (e.g. "is the floor satisfied now?") sees the post-action context.
      */
     fun transition(state: S, event: JourneyEvent, ctx: JourneyContext): Transition
+}
+
+/**
+ * A journey that begins without input from whoever starts it: it reads where to begin off the
+ * context. Every journey that opens a channel is one (`Journeys` checks it), so a cancelled run can
+ * restart it; so are those an endpoint starts with nothing to pass on.
+ */
+interface JourneyWithoutInput<S : JourneyState> : Journey<S> {
+    /** Where a fresh run begins, before any event has been seen. Taken-over evidence is already in [ctx]. */
+    fun initialState(ctx: JourneyContext): S
+
+    /** Starts a run of this journey where [initialState] says. */
+    fun start(): JourneyStart = JourneyStart.Plain(this)
+}
+
+/**
+ * Which journey a run is of, and where it begins. A journey that needs input offers its own way to
+ * build one (e.g. `StepUpJourney.toward(goal)`), so its input can only be a state of that journey.
+ */
+sealed interface JourneyStart {
+    val journey: Journey<*>
+
+    /** Begins in [seed], built from the input of whoever starts it. */
+    data class With<S : JourneyState>(override val journey: Journey<S>, val seed: S) : JourneyStart
+
+    /** Begins where the journey itself says ([JourneyWithoutInput.initialState]). */
+    data class Plain(override val journey: JourneyWithoutInput<*>) : JourneyStart
 }
 
 /** One place a journey may begin. A journey lists one or more of them. */

@@ -32,8 +32,7 @@ class ConfirmPeerLoginJourneyTest : BehaviorSpec({
 
     // loa2 plus a recent proof, with no way out through re-identification, resuming at the parked wish.
     val peerLoginProof = Transition.RequireSubJourney(
-        FreshProofJourney,
-        seedWith = FreshProofState.forSubJourney(AcrLevel.LOA2, FreshProofState.Purpose.PEER_LOGIN),
+        FreshProofJourney.before(FreshProofState.Purpose.PEER_LOGIN, AcrLevel.LOA2),
         resumeWith = ConfirmPeerLoginState.Requested
     )
 

@@ -42,8 +42,7 @@ class FreshProofJourneyTest : BehaviorSpec({
             then("requires a step-up to that level, resuming here") {
                 transition shouldBe
                     Transition.RequireSubJourney(
-                        StepUpJourney,
-                        seedWith = StepUpState.forSubJourney(AcrLevel.LOA1 upTo AcrLevel.LOA2),
+                        StepUpJourney.toward(AcrLevel.LOA1 upTo AcrLevel.LOA2),
                         resumeWith = start()
                     )
             }
@@ -52,8 +51,8 @@ class FreshProofJourneyTest : BehaviorSpec({
         `when`("the sub-journey starts for a peer login") {
             val transition = journey.transition(start(purpose = FreshProofState.Purpose.PEER_LOGIN), JourneyEvent.Started, theCtx)
             then("the step-up offers no re-identification as a way out and explains the peer login") {
-                transition.shouldBeInstanceOf<Transition.RequireSubJourney>().seedWith shouldBe
-                    StepUpState.forSubJourney((AcrLevel.LOA1 upTo AcrLevel.LOA2).copy(allowReIdentification = false, reason = StepUpState.Reason.PEER_LOGIN))
+                transition.shouldBeInstanceOf<Transition.RequireSubJourney>().start shouldBe
+                    StepUpJourney.toward((AcrLevel.LOA1 upTo AcrLevel.LOA2).copy(allowReIdentification = false, reason = StepUpState.Reason.PEER_LOGIN))
             }
         }
 

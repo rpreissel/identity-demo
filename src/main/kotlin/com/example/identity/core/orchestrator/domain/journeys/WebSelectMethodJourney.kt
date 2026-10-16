@@ -1,8 +1,8 @@
 package com.example.identity.core.orchestrator.domain.journeys
 
+import com.example.identity.core.orchestrator.domain.journey.JourneyWithoutInput
 import com.example.identity.core.orchestrator.domain.InvitationAcceptance
 import com.example.identity.core.orchestrator.domain.journey.CandidateTools
-import com.example.identity.core.orchestrator.domain.journey.Journey
 import com.example.identity.core.orchestrator.domain.journey.OpensWebChannel
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
@@ -21,7 +21,7 @@ import com.example.identity.contract.tool_api.ToolId
  * with one (a step-up, docs/05-api.md Abschnitt 3b) auth tools for that account. When none of them can
  * close the gap, the step-up falls back to `RE_IDENTIFY`, as STEP_UP does in the app.
  */
-object WebSelectMethodJourney : Journey<WebSelectMethodState> {
+object WebSelectMethodJourney : JourneyWithoutInput<WebSelectMethodState> {
 
     override val name = "WEB_SELECT_METHOD"
     override val startPoints = listOf(OpensWebChannel)

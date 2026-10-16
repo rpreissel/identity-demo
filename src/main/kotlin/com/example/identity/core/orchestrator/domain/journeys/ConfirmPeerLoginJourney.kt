@@ -1,9 +1,9 @@
 package com.example.identity.core.orchestrator.domain.journeys
 
+import com.example.identity.core.orchestrator.domain.journey.JourneyWithoutInput
 import com.example.identity.core.orchestrator.domain.journey.state.FreshProofState
 import com.example.identity.contract.texts.Text
 import com.example.identity.core.orchestrator.domain.journey.CandidateTools
-import com.example.identity.core.orchestrator.domain.journey.Journey
 import com.example.identity.core.orchestrator.domain.journey.OpensAppChannel
 import com.example.identity.core.orchestrator.domain.journey.StartableWhenAuthenticated
 import com.example.identity.core.orchestrator.domain.journey.StartingAccount
@@ -23,7 +23,7 @@ import com.example.identity.contract.tool_api.claims.AcrLevel
  * channel starts it; both reach the same gate. Without a known account it aborts; it never falls
  * back to identification or registration.
  */
-object ConfirmPeerLoginJourney : Journey<ConfirmPeerLoginState> {
+object ConfirmPeerLoginJourney : JourneyWithoutInput<ConfirmPeerLoginState> {
 
     override val name = "CONFIRM_PEER_LOGIN"
     override val startPoints = listOf(
@@ -58,8 +58,7 @@ object ConfirmPeerLoginJourney : Journey<ConfirmPeerLoginState> {
     private fun requireFreshProof(ctx: JourneyContext): Transition {
         if (ctx.account == null) return Transition.Abort(Text("Dieses Gerät ist noch keinem Konto zugeordnet - bitte zuerst regulär anmelden."))
         return Transition.RequireSubJourney(
-            FreshProofJourney,
-            seedWith = FreshProofState.forSubJourney(REQUIRED_ACR, FreshProofState.Purpose.PEER_LOGIN),
+            FreshProofJourney.before(FreshProofState.Purpose.PEER_LOGIN, REQUIRED_ACR),
             resumeWith = ConfirmPeerLoginState.Requested,
         )
     }

@@ -49,9 +49,9 @@ ist er falsch.
 Deshalb hat `ReIdentifyState` ein optionales Feld `wording` vom Typ `Wording`. Heute gibt es dafür
 nur den Wert `OPTIONAL_IDENTIFICATION`. Das Feld wählt Titel, Beschreibung und Knopftexte von
 `OfferReIdent` und `Identifying`. Gesetzt wird es über
-`forSubJourney(targetAcr, wording)`, und nur dieser eine Aufrufer belegt es. Bleibt
-es `null`, gilt der Standardtext. Das folgt demselben Muster wie `reason` in
-`StepUpState.forSubJourney`.
+`ReIdentifyJourney.toReach(targetAcr, wording)`, und nur dieser eine Aufrufer belegt es. Bleibt
+es `null`, gilt der Standardtext. Das folgt demselben Muster wie `reason` im Ziel von
+`StepUpJourney.toward`.
 
 **Wohin eine Ablehnung führt.** Wie bei jeder Journey kehrt der Kanal zu dem Anmeldestand zurück,
 den er vor dem Start hatte ([Orchestrierung](../04-orchestrierung.md), `Journey`):

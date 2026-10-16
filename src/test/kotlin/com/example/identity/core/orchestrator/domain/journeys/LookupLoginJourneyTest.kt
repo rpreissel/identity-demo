@@ -10,7 +10,6 @@ import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.core.orchestrator.domain.journey.state.LookupLoginState
-import com.example.identity.core.orchestrator.domain.journey.state.ReIdentifyState
 import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.account
 import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.ctx
 import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.method
@@ -161,8 +160,7 @@ class LookupLoginJourneyTest : BehaviorSpec({
             then("requires the shared RE_IDENTIFY sub-journey - it only re-confirms this account, never adopts a different one") {
                 transition shouldBe
                     Transition.RequireSubJourney(
-                        ReIdentifyJourney,
-                        seedWith = ReIdentifyState.forSubJourney(AcrLevel.LOA2),
+                        ReIdentifyJourney.toReach(AcrLevel.LOA2),
                         resumeWith = LookupLoginState.Start
                     )
             }

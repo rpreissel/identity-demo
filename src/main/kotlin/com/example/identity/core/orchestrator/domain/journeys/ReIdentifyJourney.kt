@@ -1,5 +1,7 @@
 package com.example.identity.core.orchestrator.domain.journeys
 
+import com.example.identity.contract.tool_api.claims.AcrLevel
+import com.example.identity.core.orchestrator.domain.journey.JourneyStart
 import com.example.identity.core.orchestrator.domain.journey.Action
 import com.example.identity.core.orchestrator.domain.journey.CandidateTools
 import com.example.identity.core.orchestrator.domain.journey.Journey
@@ -22,8 +24,9 @@ object ReIdentifyJourney : Journey<ReIdentifyState> {
     override val startPoints = listOf(OnlyAsSubJourney)
     override val stateRoots = listOf(ReIdentifyState::class)
 
-    /** Never entered without a target; only reachable as a sub-journey, which seeds the real one. */
-    override fun initialState(ctx: JourneyContext): ReIdentifyState = ReIdentifyState.OfferReIdent(ctx.acrFloor)
+    /** A fresh identification to reach [targetAcr], asked first in [wording] (the default question if null). */
+    fun toReach(targetAcr: AcrLevel, wording: ReIdentifyState.Wording? = null): JourneyStart =
+        JourneyStart.With(this, ReIdentifyState.OfferReIdent(targetAcr, wording))
 
     override fun transition(state: ReIdentifyState, event: JourneyEvent, ctx: JourneyContext): Transition =
         when (state) {

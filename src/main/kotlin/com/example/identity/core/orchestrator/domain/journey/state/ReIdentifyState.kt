@@ -25,13 +25,6 @@ sealed interface ReIdentifyState : JourneyState {
         OPTIONAL_IDENTIFICATION
     }
 
-    companion object {
-        /**
-         * The seed for [com.example.identity.core.orchestrator.domain.journey.Transition.RequireSubJourney],
-         * so callers never construct [OfferReIdent] themselves.
-         */
-        fun forSubJourney(targetAcr: AcrLevel, wording: Wording? = null): ReIdentifyState = OfferReIdent(targetAcr, wording)
-    }
 
     data class OfferReIdent(
         override val targetAcr: AcrLevel,

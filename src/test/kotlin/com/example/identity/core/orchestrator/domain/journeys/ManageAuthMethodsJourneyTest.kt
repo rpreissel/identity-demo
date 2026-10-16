@@ -38,23 +38,11 @@ class ManageAuthMethodsJourneyTest : BehaviorSpec({
     // An identification proves loa2 on its own, whatever methods the account holds.
     val loa2Evidence = evidence(listOf("fsc"), setOf(FactorType.POSSESSION))
 
-    given("a new journey") {
-        `when`("its first state is chosen") {
-            val initial = journey.initialState(ctx())
-
-            then("it is AddRequested") {
-                initial shouldBe ManageAuthMethodsState.AddRequested
-            }
-        }
-    }
-
     fun proofRequired(transition: Transition, requiredAcr: AcrLevel, resumeWith: ManageAuthMethodsState) {
         val required = transition.shouldBeInstanceOf<Transition.RequireSubJourney>()
         required.journey shouldBe FreshProofJourney
         required.resumeWith shouldBe resumeWith
-        val seed = required.seedWith.shouldBeInstanceOf<FreshProofState.Start>()
-        seed.requiredAcr shouldBe requiredAcr
-        seed.purpose shouldBe FreshProofState.Purpose.MANAGE_METHODS
+        required.start shouldBe FreshProofJourney.before(FreshProofState.Purpose.MANAGE_METHODS, requiredAcr)
     }
     val proven = JourneyEvent.SubJourneyFinished(FreshProofJourney, achievedAcr = AcrLevel.LOA2)
 
@@ -67,8 +55,7 @@ class ManageAuthMethodsJourneyTest : BehaviorSpec({
             then("parks the wish and requires loa2 plus a fresh proof, without losing it (ADR-61)") {
                 transition shouldBe
                     Transition.RequireSubJourney(
-                        FreshProofJourney,
-                        seedWith = FreshProofState.forSubJourney(AcrLevel.LOA2, FreshProofState.Purpose.MANAGE_METHODS),
+                        FreshProofJourney.before(FreshProofState.Purpose.MANAGE_METHODS, AcrLevel.LOA2),
                         resumeWith = ManageAuthMethodsState.AddRequested
                     )
             }

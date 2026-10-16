@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.domain.journeys
 
+import com.example.identity.core.orchestrator.domain.journey.JourneyStart
 import com.example.identity.contract.texts.Text
 import com.example.identity.core.orchestrator.domain.journey.Action
 import com.example.identity.core.orchestrator.domain.journey.CandidateTools
@@ -9,7 +10,6 @@ import com.example.identity.core.orchestrator.domain.journey.JourneyContext
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
-import com.example.identity.core.orchestrator.domain.journey.state.StepUpState
 import com.example.identity.core.orchestrator.domain.journey.state.upTo
 import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.core.orchestrator.domain.journey.state.FreshProofState
@@ -28,9 +28,9 @@ object FreshProofJourney : Journey<FreshProofState> {
     override val startPoints = listOf(OnlyAsSubJourney)
     override val stateRoots = listOf(FreshProofState::class)
 
-    /** Never entered without a seed; only reachable as a sub-journey ([FreshProofState.forSubJourney]). */
-    override fun initialState(ctx: JourneyContext): FreshProofState =
-        FreshProofState.forSubJourney(ctx.acrFloor, FreshProofState.Purpose.GENERIC)
+    /** The gate before an action for [purpose]: [requiredAcr] reached and a recent proof. */
+    fun before(purpose: FreshProofState.Purpose, requiredAcr: AcrLevel): JourneyStart =
+        JourneyStart.With(this, FreshProofState.Start(requiredAcr, purpose))
 
     override fun transition(state: FreshProofState, event: JourneyEvent, ctx: JourneyContext): Transition =
         when (state) {
@@ -56,8 +56,7 @@ object FreshProofJourney : Journey<FreshProofState> {
     private fun gate(state: FreshProofState.Start, ctx: JourneyContext): Transition? {
         if (ctx hasReached state.requiredAcr) return null
         return Transition.RequireSubJourney(
-            StepUpJourney,
-            seedWith = StepUpState.forSubJourney(
+            StepUpJourney.toward(
                 (ctx.currentAcr upTo state.requiredAcr).copy(allowReIdentification = state.purpose.allowReIdentification, reason = state.purpose.stepUpReason)
             ),
             resumeWith = state,

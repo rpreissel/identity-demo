@@ -1,9 +1,9 @@
 package com.example.identity.core.orchestrator.domain.journeys
 
+import com.example.identity.core.orchestrator.domain.journey.JourneyWithoutInput
 import com.example.identity.core.orchestrator.domain.journey.state.DeviceLinkQuestion
 import com.example.identity.contract.texts.Text
 import com.example.identity.core.orchestrator.domain.journey.CandidateTools
-import com.example.identity.core.orchestrator.domain.journey.Journey
 import com.example.identity.core.orchestrator.domain.journey.OpensAppChannel
 import com.example.identity.core.orchestrator.domain.journey.StartingAccount
 import com.example.identity.core.orchestrator.domain.journey.DeviceLink
@@ -21,7 +21,7 @@ import com.example.identity.core.orchestrator.domain.journey.toAuthAbortMessage
  * link arises only from [DeviceLinkQuestion], after the user agrees: people choose this journey
  * because they do not want to be recognized next time.
  */
-object LookupLoginJourney : Journey<LookupLoginState> {
+object LookupLoginJourney : JourneyWithoutInput<LookupLoginState> {
 
     override val name = "LOOKUP_LOGIN"
     override val startPoints = listOf(OpensAppChannel(startsWith = StartingAccount.NONE, onSuccess = DeviceLink.ASK_BEFORE_LINKING))

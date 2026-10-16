@@ -13,7 +13,6 @@ import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.core.orchestrator.domain.journey.state.AuthChoice
 import com.example.identity.core.orchestrator.domain.journey.state.Enrolling
 import com.example.identity.core.orchestrator.domain.journey.state.RegisterState
-import com.example.identity.core.orchestrator.domain.journey.state.ReIdentifyState
 import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.APP_SECOND_FACTOR_KINDS
 import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.account
 import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.ctx
@@ -303,8 +302,7 @@ class RegisterJourneyTest : BehaviorSpec({
             then("requires RE_IDENTIFY instead of offering the next enrollment, resuming at Start") {
                 transition shouldBe
                     Transition.RequireSubJourney(
-                        ReIdentifyJourney,
-                        seedWith = ReIdentifyState.forSubJourney(AcrLevel.LOA2),
+                        ReIdentifyJourney.toReach(AcrLevel.LOA2),
                         resumeWith = RegisterState.Start
                     )
             }

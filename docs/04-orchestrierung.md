@@ -488,7 +488,7 @@ gleichwertige Wege dorthin:
 
 Weil Weg 3 gleichwertig ist, bietet die Anmeldung die erneute Identifizierung
 (`CandidateTools.forReIdentification`) standardmäßig als Ausweichweg an. Das geschieht, sobald die
-vorhandenen Anmeldeverfahren nicht reichen (`StepUpState.forSubJourney`, standardmäßig
+vorhandenen Anmeldeverfahren nicht reichen (`StepUpJourney.toward`, standardmäßig
 `allowReIdentification=true`). `loa3` bzw. AAL3 ist bewusst nicht ausgearbeitet.
 
 ### Nachweis der Sitzung ist nicht dasselbe wie Fähigkeit des Kontos
@@ -708,8 +708,7 @@ erreichen will und wie er dorthin kommt.
 
 Jede Journey ist ein Moore-Automat für ihren eigenen Zustandstyp, also ein Zustandsautomat, der
 aus Zustand und Ereignis den nächsten Schritt bestimmt. Sie hat die Methode
-`transition(state, event, ctx)` und dazu `initialState(ctx)`. `initialState` sagt, wo eine direkt
-gestartete Journey beginnt. `stateRoots` nennt die `sealed`-Wurzeln ihrer Zustände, meist eine;
+`transition(state, event, ctx)`. `stateRoots` nennt die `sealed`-Wurzeln ihrer Zustände, meist eine;
 danach liest `JourneyStateCodec` den gespeicherten Zustand zurück.
 
 **Kein Code fragt nach einer bestimmten Journey.** Was an einer Journey hängt, nennt sie selbst:
@@ -729,11 +728,20 @@ verloren, mit Identität und Adresse ([ADR-46](adr/ADR-046-konto-im-aufbau.md)).
 Bestätigung einer Web-Anmeldung aus einem noch nicht angemeldeten Kanal und nicht für einen
 Step-up vor der Anmeldung.
 
-Eine Sub-Journey mit vorgegebenem Zielniveau beginnt nicht über die SPI. Sie beginnt über die
-Fabrikmethode im Companion ihres Zustands (`StepUpState.forSubJourney(...)`,
-`ReIdentifyState.forSubJourney(...)`, `FreshProofState.forSubJourney(...)`,
-`RegisterState.forSubJourney()`). Als Sub-Journey laufen `STEP_UP`, `RE_IDENTIFY`, `FRESH_PROOF`
-und `REGISTER`; `FRESH_PROOF` ruft seinerseits `STEP_UP`.
+**Wo ein Lauf beginnt, sagt die Journey selbst** (`JourneyStart`). Es gibt zwei Arten:
+
+- Eine Journey ohne Eingabe (`JourneyWithoutInput`) liest ihren ersten Zustand aus dem Kontext
+  (`initialState(ctx)`); gestartet wird sie mit `start()`. Das sind alle Journeys, die einen Kanal
+  eröffnen (`Journeys` prüft das, denn ein abgebrochener Lauf startet sie ohne Eingabe neu), dazu
+  `CONFIRM_PEER_LOGIN` und `DELETE_ACCOUNT`.
+- Eine Journey mit Eingabe bietet ihren Einstieg als Methode an: `StepUpJourney.toward(goal)`,
+  `FreshProofJourney.before(purpose, requiredAcr)`, `ReIdentifyJourney.toReach(targetAcr, wording)`,
+  `ManageAuthMethodsJourney.toCarryOut(wish)`. `JourneyStart.With<S>` verlangt einen Zustand
+  *dieser* Journey; einen fremden lässt der Compiler nicht zu.
+
+Endpunkte und Journeys, die eine Sub-Journey anfordern, nutzen denselben Weg. Als Sub-Journey
+laufen `STEP_UP`, `RE_IDENTIFY`, `FRESH_PROOF` und `REGISTER`; `FRESH_PROOF` ruft seinerseits
+`STEP_UP`.
 
 `transition()` ist die einzige Methode, die überhaupt etwas entscheidet.
 
@@ -755,12 +763,12 @@ Journey-Trace steht es weiter als Eintrag „Completed“.
 Ein **Übergang** (`Transition`) ist das, was als Nächstes passieren soll:
 
 - **`To(state)`** — weiter zu diesem Zustand. Er bringt sein Angebot selbst mit.
-- **`RequireSubJourney(journey, seedWith, resumeWith, optional)`** — zuerst `journey` laufen lassen,
-  beginnend bei `seedWith`, und danach hier bei `resumeWith` weitermachen. Wird die Sub-Journey
+- **`RequireSubJourney(start, resumeWith, optional)`** — zuerst die Journey aus `start` laufen
+  lassen (z. B. `StepUpJourney.toward(goal)`), und danach hier bei `resumeWith` weitermachen.
+  `resumeWith` muss ein Zustand der anfordernden Journey sein; `JourneyService` prüft das. Wird die Sub-Journey
   abgebrochen, bricht diese Journey mit ab, außer die Anforderung war `optional`; dann entscheidet
   die anfordernde Journey. Die Aussage gilt je Anforderung und steht an der Sub-Journey
-  (`auth_journey.optional_for_parent`). `seedWith` baut die anfordernde
-  Journey über die Fabrikmethode des Zielzustands, z. B. `StepUpState.forSubJourney(...)`.
+  (`auth_journey.optional_for_parent`).
 - **`Authenticated`** — Ziel erreicht. Die Journey ist damit abgeschlossen und wird nicht weiter
   verwendet.
 - **`Cancel`** — Der Nutzer gibt auf. Das ist wie ein ausdrücklicher Abbruch und kein Fehler.
@@ -935,7 +943,7 @@ vorhandener Stand. Er läuft deshalb als **erster Übergang** des Automaten. In 
 keinem Zustand.
 
 Genau dafür gibt es den Parameter `restoredEvidence` von `JourneyService.start()`. Die Nachweise
-werden übernommen, BEVOR `Journey.initialState()` aufgerufen wird. Das ist kein
+werden übernommen, BEVOR `JourneyWithoutInput.initialState()` aufgerufen wird. Das ist kein
 `JourneyEvent` und keine `Action`, sondern ein protokollierter Übergang namens `"Entry"`, den
 `JourneyService` selbst ausführt.
 

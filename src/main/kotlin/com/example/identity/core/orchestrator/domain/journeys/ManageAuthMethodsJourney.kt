@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.domain.journeys
 
+import com.example.identity.core.orchestrator.domain.journey.JourneyStart
 import com.example.identity.core.orchestrator.domain.journey.state.FreshProofState
 import com.example.identity.contract.texts.Text
 import com.example.identity.core.orchestrator.domain.journey.Action
@@ -27,7 +28,8 @@ object ManageAuthMethodsJourney : Journey<ManageAuthMethodsState> {
     override val startPoints = listOf(StartableWhenAuthenticated)
     override val stateRoots = listOf(ManageAuthMethodsState::class)
 
-    override fun initialState(ctx: JourneyContext): ManageAuthMethodsState = ManageAuthMethodsState.AddRequested
+    /** A run that carries out [wish]: add, change or remove a method, or retract an attribute. */
+    fun toCarryOut(wish: ManageAuthMethodsState.Wish): JourneyStart = JourneyStart.With(this, wish)
 
     override fun transition(state: ManageAuthMethodsState, event: JourneyEvent, ctx: JourneyContext): Transition =
         when (state) {
@@ -66,8 +68,7 @@ object ManageAuthMethodsJourney : Journey<ManageAuthMethodsState> {
             )
         }
         return Transition.RequireSubJourney(
-            FreshProofJourney,
-            seedWith = FreshProofState.forSubJourney(requiredAcr, FreshProofState.Purpose.MANAGE_METHODS),
+            FreshProofJourney.before(FreshProofState.Purpose.MANAGE_METHODS, requiredAcr),
             resumeWith = wish,
         )
     }

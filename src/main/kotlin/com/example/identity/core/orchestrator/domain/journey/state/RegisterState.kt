@@ -18,13 +18,6 @@ sealed interface RegisterState : JourneyState {
      */
     data object Closing : RegisterState, ToolFreeState
 
-    companion object {
-        /**
-         * The seed for [com.example.identity.core.orchestrator.domain.journey.Transition.RequireSubJourney],
-         * so callers never construct [Start] themselves.
-         */
-        fun forSubJourney(): RegisterState = Start
-    }
 
     /**
      * Identification, for a login FAST_ACCESS could not shortcut and a fresh registration alike.

@@ -12,6 +12,8 @@ import com.example.identity.contract.tool_api.Attempted
 import com.example.identity.core.orchestrator.session.id
 import com.example.identity.core.orchestrator.domain.journey.Action
 import com.example.identity.core.orchestrator.domain.journey.Journey
+import com.example.identity.core.orchestrator.domain.journey.JourneyStart
+import com.example.identity.core.orchestrator.domain.journey.JourneyWithoutInput
 import com.example.identity.core.orchestrator.domain.journey.StartingAccount
 import com.example.identity.core.orchestrator.domain.journey.JourneyContext
 import com.example.identity.core.orchestrator.domain.journey.Answer
@@ -36,7 +38,6 @@ import com.example.identity.core.orchestrator.domain.ChannelState
 import com.example.identity.core.orchestrator.session.LiveChannel
 import com.example.identity.core.orchestrator.session.SessionManagementService
 import com.example.identity.core.orchestrator.journeytrace.JourneyTraceService
-import com.example.identity.contract.tool_api.claims.AcrLevel
 import com.example.identity.contract.tool_api.Tool
 import com.example.identity.contract.tool_api.ToolId
 import com.example.identity.contract.tool_api.ToolOutcome
@@ -86,8 +87,9 @@ class JourneyService(
     // Lifecycle ---------------------------------------------------------------
 
     /**
-     * Starts a journey and produces its first offer. [seed] names the concrete wish (a step-up
-     * target, a method to remove); without it [Journey.initialState] applies. [restoredEvidence],
+     * Starts a journey and produces its first offer. [start] names the journey and where it begins:
+     * the concrete wish (a step-up target, a method to remove) or, for a journey without input,
+     * its [JourneyWithoutInput.initialState]. [restoredEvidence],
      * what the same Keycloak session proved before (ADR-59), is applied as a logged entry transition
      * before `initialState()`, so the journey already sees it (docs/04-orchestrierung.md #8,
      * "Übernommene Nachweise als erster Übergang").
@@ -95,18 +97,16 @@ class JourneyService(
      */
     fun start(
         channel: LiveChannel,
-        kind: Journey<*>,
-        seed: JourneyState? = null,
+        start: JourneyStart,
         restoredEvidence: List<MethodEvidence>? = null
     ): Step {
         keepSessionAlive(channel)
-        return startJourney(channel.session, kind, seed, parentJourneyId = null, restoredEvidence = restoredEvidence)
+        return startJourney(channel.session, start, parentJourneyId = null, restoredEvidence = restoredEvidence)
     }
 
     private fun startJourney(
         channel: ChannelSession,
-        kind: Journey<*>,
-        seed: JourneyState?,
+        start: JourneyStart,
         parentJourneyId: JourneyId?,
         restoredEvidence: List<MethodEvidence>?,
         optionalForParent: Boolean = false,
@@ -118,14 +118,14 @@ class JourneyService(
             findActive(channel.id)?.let { cancelChain(it.entity, channel) }
         }
         val now = clock.instant()
-        val journey = AuthJourney(channel.channelSessionId, kind, now.plus(JOURNEY_TTL), now)
+        val journey = AuthJourney(channel.channelSessionId, start.journey, now.plus(JOURNEY_TTL), now)
         journey.accountId = channel.accountId
         journey.parentJourneyId = parentJourneyId
         journey.optionalForParent = optionalForParent
         journey.featureFlags = contextFactory.activeFeatureFlags()
         // Placeholder for the NOT NULL state columns. It is rewritten once the restored evidence
         // is in, so no journey observes it.
-        codec.write(journey, seed ?: kind.initialState(contextFactory.contextFor(journey, channel)))
+        codec.write(journey, firstStateOf(start, journey, channel))
         journeyRepository.save(journey) // journeyId exists from here on, for the entry transition's log line.
 
         restoredEvidence?.let { methods ->
@@ -133,7 +133,7 @@ class JourneyService(
             journeyTraceService.record(channel.forLog(), journey.forLog(), "Entry", detail = mapOf("methods" to journeyTraceDetails.methodEvidenceDetail(methods)))
             journeyRecorder.restoreEvidence(channel, methods)
             // Re-derive, so initialState() sees the restored evidence.
-            codec.write(journey, seed ?: kind.initialState(contextFactory.contextFor(journey, channel)))
+            codec.write(journey, firstStateOf(start, journey, channel))
             journeyRepository.save(journey)
         }
 
@@ -152,7 +152,7 @@ class JourneyService(
             channel.state = ChannelState.ANONYMOUS
             sessionManagementService.updateChannelSession(channel)
         }
-        return startJourney(channel, channel.entryJourney, seed = null, parentJourneyId = null, restoredEvidence = restoredEvidence)
+        return startJourney(channel, entryStart(channel), parentJourneyId = null, restoredEvidence = restoredEvidence)
     }
 
     /** The running journey of this channel, if any. A suspended parent is not it. */
@@ -444,12 +444,16 @@ class JourneyService(
      * keeps "one running journey per channel" true.
      */
     private fun suspendFor(journey: AuthJourney, channel: ChannelSession, transition: Transition.RequireSubJourney): Step {
+        // A transition does not know whose it is, so this is where a foreign resume state is caught.
+        check(journey.requireKind().stateRoots.any { it.isInstance(transition.resumeWith) }) {
+            "${journey.requireKind().name} cannot resume at ${transition.resumeWith::class.simpleName}, a state of another journey"
+        }
         codec.write(journey, transition.resumeWith)
         journey.lifecycle = JourneyLifecycle.SUSPENDED
         // Flushed before the child row: the database allows one STARTED journey per channel
         // (ux_journey_running_per_channel), and the child insert would otherwise come first.
         journeyRepository.saveAndFlush(journey)
-        return startJourney(channel, transition.journey, seed = transition.seedWith, parentJourneyId = journey.journeyId, restoredEvidence = null,
+        return startJourney(channel, transition.start, parentJourneyId = journey.journeyId, restoredEvidence = null,
             optionalForParent = transition.optional)
     }
 
@@ -610,6 +614,19 @@ class JourneyService(
     private fun discardIfBeingSetUp(accountId: AccountId?) {
         if (accountId == null || !accountService.isBeingSetUp(accountId)) return
         accountDeletionService.deleteAccount(accountId)
+    }
+
+    /** Where a run begins: the caller's seed, or what the journey reads off the context. */
+    private fun firstStateOf(start: JourneyStart, journey: AuthJourney, channel: ChannelSession): JourneyState = when (start) {
+        is JourneyStart.With<*> -> start.seed
+        is JourneyStart.Plain -> start.journey.initialState(contextFactory.contextFor(journey, channel))
+    }
+
+    /** The channel's entry journey; `Journeys` guarantees every one that opens a channel needs no input. */
+    private fun entryStart(channel: ChannelSession): JourneyStart {
+        val entry = channel.entryJourney
+        check(entry is JourneyWithoutInput<*>) { "${entry.name} opens a channel but needs input" }
+        return entry.start()
     }
 
     /**

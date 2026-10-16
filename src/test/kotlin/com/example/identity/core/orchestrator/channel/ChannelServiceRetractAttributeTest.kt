@@ -48,7 +48,7 @@ class ChannelServiceRetractAttributeTest : BehaviorSpec({
 
             then("the manage journey starts with that wish") {
                 verify {
-                    fixture.journeyService.start(any(), ManageAuthMethodsJourney, ManageAuthMethodsState.RetractAttributeRequested(AttributeType.EMAIL))
+                    fixture.journeyService.start(any(), ManageAuthMethodsJourney.toCarryOut(ManageAuthMethodsState.RetractAttributeRequested(AttributeType.EMAIL)))
                 }
             }
         }

@@ -4,9 +4,7 @@ import com.example.identity.core.orchestrator.domain.journeys.StepUpJourney
 import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.Transition
-import com.example.identity.core.orchestrator.domain.journey.state.ReIdentifyState
 import com.example.identity.core.orchestrator.domain.journey.state.StepUpState
-import com.example.identity.core.orchestrator.domain.journey.state.StepUpState.Goal
 import com.example.identity.core.orchestrator.domain.journey.state.upTo
 import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.account
 import com.example.identity.core.orchestrator.domain.journeys.JourneyTestFixtures.ctx
@@ -58,8 +56,7 @@ class StepUpJourneyTest : BehaviorSpec({
             val transition = journey.transition(state, JourneyEvent.Started, theCtx)
             then("requires the shared RE_IDENTIFY sub-journey instead of aborting") {
                 transition shouldBe Transition.RequireSubJourney(
-                    ReIdentifyJourney,
-                    seedWith = ReIdentifyState.forSubJourney(AcrLevel.LOA2),
+                    ReIdentifyJourney.toReach(AcrLevel.LOA2),
                     resumeWith = StepUpState.Start(AcrLevel.LOA1 upTo AcrLevel.LOA2)
                 )
             }
@@ -140,8 +137,7 @@ class StepUpJourneyTest : BehaviorSpec({
             then("requires the shared RE_IDENTIFY sub-journey") {
                 transition shouldBe
                     Transition.RequireSubJourney(
-                        ReIdentifyJourney,
-                        seedWith = ReIdentifyState.forSubJourney(AcrLevel.LOA2),
+                        ReIdentifyJourney.toReach(AcrLevel.LOA2),
                         resumeWith = StepUpState.Start(AcrLevel.LOA1 upTo AcrLevel.LOA2)
                     )
             }

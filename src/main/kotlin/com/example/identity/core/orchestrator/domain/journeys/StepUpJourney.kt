@@ -1,5 +1,6 @@
 package com.example.identity.core.orchestrator.domain.journeys
 
+import com.example.identity.core.orchestrator.domain.journey.JourneyStart
 import com.example.identity.core.orchestrator.domain.journey.CandidateTools
 import com.example.identity.core.orchestrator.domain.journey.Journey
 import com.example.identity.core.orchestrator.domain.journey.StartableWhenAuthenticated
@@ -10,9 +11,7 @@ import com.example.identity.core.orchestrator.domain.journey.state.Offer
 import com.example.identity.core.orchestrator.domain.journey.toAuthAbortMessage
 import com.example.identity.core.orchestrator.domain.journey.state.StepUpState
 import com.example.identity.core.orchestrator.domain.journey.state.StepUpState.Goal
-import com.example.identity.core.orchestrator.domain.journey.state.upTo
 import com.example.identity.core.orchestrator.domain.policy.EvidenceAxis
-import com.example.identity.contract.tool_api.claims.AcrLevel
 
 /**
  * Raise the level of an already authenticated session (docs/journeys/step-up.md). When no active
@@ -24,8 +23,8 @@ object StepUpJourney : Journey<StepUpState> {
     override val startPoints = listOf(StartableWhenAuthenticated)
     override val stateRoots = listOf(StepUpState::class)
 
-    /** Never entered without a target; only reachable as a sub-journey, which seeds the real one. */
-    override fun initialState(ctx: JourneyContext): StepUpState = StepUpState.Start(AcrLevel.NONE upTo ctx.acrFloor)
+    /** A step-up toward [goal]: never started without one. */
+    fun toward(goal: Goal): JourneyStart = JourneyStart.With(this, StepUpState.Start(goal))
 
     override fun transition(state: StepUpState, event: JourneyEvent, ctx: JourneyContext): Transition =
         when (state) {
