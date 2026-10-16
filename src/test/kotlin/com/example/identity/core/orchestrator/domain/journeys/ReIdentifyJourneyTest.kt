@@ -29,7 +29,7 @@ class ReIdentifyJourneyTest : BehaviorSpec({
     val journey = ReIdentifyJourney
 
     given("Identifying, one offered candidate") {
-        val state = ReIdentifyState.Identifying(AcrLevel.LOA2, Offer(listOf(ToolId("ident-fsc"))))
+        val state = ReIdentifyState.Identifying(AcrLevel.LOA2, Offer(listOf(ToolId("ident-fsc"))), ReIdentifyState.Kind.RECOVERY)
 
     }
 
@@ -44,7 +44,7 @@ class ReIdentifyJourneyTest : BehaviorSpec({
             ),
             acrFloor = AcrLevel.LOA2
         )
-        val state = ReIdentifyState.OfferReIdent(AcrLevel.LOA2)
+        val state = ReIdentifyState.OfferReIdent(AcrLevel.LOA2, ReIdentifyState.Kind.RECOVERY)
 
         `when`("accepted") {
             val transition = journey.transition(state, JourneyEvent.Answered(Answer.ACCEPT), theCtx)
@@ -84,7 +84,7 @@ class ReIdentifyJourneyTest : BehaviorSpec({
             ),
             acrFloor = AcrLevel.LOA2
         )
-        val state = ReIdentifyState.OfferReIdent(AcrLevel.LOA2)
+        val state = ReIdentifyState.OfferReIdent(AcrLevel.LOA2, ReIdentifyState.Kind.RECOVERY)
 
         `when`("accepted") {
             val transition = journey.transition(state, JourneyEvent.Answered(Answer.ACCEPT), theCtx)
@@ -97,7 +97,7 @@ class ReIdentifyJourneyTest : BehaviorSpec({
     given("Identifying, more than one candidate offered") {
         val acc = account(method("sms", AcrLevel.LOA2))
         val theCtx = ctx(account = acc)
-        val state = ReIdentifyState.Identifying(AcrLevel.LOA2, Offer(listOf(ToolId("ident-fsc"), ToolId("ident-eid"))))
+        val state = ReIdentifyState.Identifying(AcrLevel.LOA2, Offer(listOf(ToolId("ident-fsc"), ToolId("ident-eid"))), ReIdentifyState.Kind.RECOVERY)
 
         `when`("resumed after recording the proof (ActionCompleted)") {
             val transition = journey.transition(state, JourneyEvent.ActionCompleted, theCtx)
@@ -110,7 +110,7 @@ class ReIdentifyJourneyTest : BehaviorSpec({
     given("Identifying, the other candidate already declined") {
         val theCtx = ctx(account = account(method("sms", AcrLevel.LOA2)))
         val offer = Offer(listOf(ToolId("ident-fsc"), ToolId("ident-eid")), declined = setOf(ToolId("ident-eid")))
-        val state = ReIdentifyState.Identifying(AcrLevel.LOA2, offer)
+        val state = ReIdentifyState.Identifying(AcrLevel.LOA2, offer, ReIdentifyState.Kind.RECOVERY)
 
         `when`("the last remaining candidate is abandoned too") {
             val exhausted = state.declining(ToolId("ident-fsc"))

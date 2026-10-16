@@ -46,12 +46,13 @@ vorhandenen Anmeldeverfahren nicht erreichbar“. Er passt nur für `FAST_ACCESS
 `STEP_UP` und `WEB_SELECT_METHOD`. Für das abschließende Angebot im Experiment „Erst Anmeldeverfahren einrichten“
 ist er falsch.
 
-Deshalb hat `ReIdentifyState` ein optionales Feld `wording` vom Typ `Wording`. Heute gibt es dafür
-nur den Wert `OPTIONAL_IDENTIFICATION`. Das Feld wählt Titel, Beschreibung und Knopftexte von
-`OfferReIdent` und `Identifying`. Gesetzt wird es über
-`ReIdentifyJourney.toReach(targetAcr, wording)`, und nur dieser eine Aufrufer belegt es. Bleibt
-es `null`, gilt der Standardtext. Das folgt demselben Muster wie `reason` im Ziel von
-`StepUpJourney.toward`.
+Deshalb sagt `ReIdentifyState.kind`, warum identifiziert wird: `RECOVERY` (nichts anderes reicht,
+der Standardtext) oder `OPTIONAL` (ein nie identifiziertes Konto bekommt die Identifizierung als
+Zusatz angeboten). Das Feld wählt Titel, Beschreibung und Knopftexte von `OfferReIdent` und
+`Identifying`. Gestartet wird über `ReIdentifyJourney.toReach(targetAcr)` bzw.
+`ReIdentifyJourney.offerOptionally(targetAcr)`; nur das Experiment nutzt die zweite Form und
+fordert die Sub-Journey dabei als optional an. Das folgt demselben Muster wie der Zweck
+(`ProofPurpose`) im Ziel von `StepUpJourney.toward`.
 
 **Wohin eine Ablehnung führt.** Wie bei jeder Journey kehrt der Kanal zu dem Anmeldestand zurück,
 den er vor dem Start hatte ([Orchestrierung](../04-orchestrierung.md), `Journey`):

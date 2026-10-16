@@ -207,8 +207,9 @@ object RegisterJourney : JourneyWithoutInput<RegisterState> {
      * optionally. Declining or having nothing to offer finishes the registration.
      */
     private fun offerClosingIdentification(ctx: JourneyContext): Transition =
-        // The default wording ("erneut", "nicht erreichbar") is wrong for a new account.
-        reIdentifyOr(ctx.acrFloor, ctx, resumeWith = RegisterState.Closing, wording = ReIdentifyState.Wording.OPTIONAL_IDENTIFICATION, optional = true) {
+        if (CandidateTools.forReIdentification(ctx.acrFloor, ctx).isNotEmpty()) {
+            Transition.RequireSubJourney(ReIdentifyJourney.offerOptionally(ctx.acrFloor), resumeWith = RegisterState.Closing, optional = true)
+        } else {
             finishOrOfferRebind(ctx)
         }
 

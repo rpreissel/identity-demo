@@ -12,34 +12,31 @@ sealed interface ReIdentifyState : JourneyState {
     /** The goal this sub-journey was started for, not the channel's durable floor. */
     val targetAcr: AcrLevel
 
-    /** Carried from [OfferReIdent] into [Identifying]; see [Wording]. */
-    val wording: Wording?
+    /** Why identification is offered; carried from [OfferReIdent] into [Identifying], it picks the wording. */
+    val kind: Kind
 
-    /**
-     * Caller-supplied wording. `null` frames the run as a recovery ("re-identify, nothing else
-     * reaches the target"). That is wrong for a never-identified account offered identification as
-     * an optional extra.
-     */
-    enum class Wording {
-        /** A never-identified account offered identification as an optional extra. */
-        OPTIONAL_IDENTIFICATION
+    enum class Kind {
+        /** Nothing else reaches [targetAcr]: re-identify instead ("erneut", "nicht erreichbar"). */
+        RECOVERY,
+
+        /** A never-identified account offered identification as an optional extra; declining skips it. */
+        OPTIONAL,
     }
-
 
     data class OfferReIdent(
         override val targetAcr: AcrLevel,
-        override val wording: Wording? = null
+        override val kind: Kind
     ) : ReIdentifyState, AnswerableState {
         override val question: Question
-            get() = when (wording) {
+            get() = when (kind) {
                 // The account is already set up here (ADR-46): declining skips, it discards nothing.
-                Wording.OPTIONAL_IDENTIFICATION -> Question.Confirm(
+                Kind.OPTIONAL -> Question.Confirm(
                     title = Text("Identifizieren?"),
                     description = Text("Ihr Konto ist eingerichtet. Optional können Sie sich jetzt zusätzlich identifizieren."),
                     confirmLabel = Text("Identifizieren"),
                     cancelLabel = Text("Ohne Identifizierung weiter")
                 )
-                null -> Question.Confirm(
+                Kind.RECOVERY -> Question.Confirm(
                     title = Text("Erneut identifizieren?"),
                     description = Text(
                         "Mit den vorhandenen Anmeldeverfahren ist das geforderte Sicherheitsniveau " +
@@ -54,18 +51,18 @@ sealed interface ReIdentifyState : JourneyState {
     data class Identifying(
         override val targetAcr: AcrLevel,
         override val offer: Offer,
-        override val wording: Wording? = null
+        override val kind: Kind
     ) : ReIdentifyState, OfferingState {
         override fun withOffer(offer: Offer) = copy(offer = offer)
         override val declinePolicy: DeclinePolicy get() = DeclinePolicy.FALLBACK
         override val selectionContext: String get() = "auth"
-        override val selectionTitle: Text get() = when (wording) {
-            Wording.OPTIONAL_IDENTIFICATION -> Text("Identifikation (optional)")
-            null -> Text("Erneute Identifikation erforderlich")
+        override val selectionTitle: Text get() = when (kind) {
+            Kind.OPTIONAL -> Text("Identifikation (optional)")
+            Kind.RECOVERY -> Text("Erneute Identifikation erforderlich")
         }
-        override val selectionDescription: Text get() = when (wording) {
-            Wording.OPTIONAL_IDENTIFICATION -> Text("Wählen Sie ein Verfahren, um sich zu identifizieren.")
-            null -> Text("Ihre bestehenden Anmeldeverfahren reichen für das geforderte Sicherheitsniveau nicht aus. Bitte identifizieren Sie sich erneut.")
+        override val selectionDescription: Text get() = when (kind) {
+            Kind.OPTIONAL -> Text("Wählen Sie ein Verfahren, um sich zu identifizieren.")
+            Kind.RECOVERY -> Text("Ihre bestehenden Anmeldeverfahren reichen für das geforderte Sicherheitsniveau nicht aus. Bitte identifizieren Sie sich erneut.")
         }
     }
 }

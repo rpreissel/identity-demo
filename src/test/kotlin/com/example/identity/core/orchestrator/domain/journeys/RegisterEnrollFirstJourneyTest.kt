@@ -40,10 +40,7 @@ class RegisterEnrollFirstJourneyTest : BehaviorSpec({
     // Mirrors the literal RegisterJourney.offerClosingIdentification builds: its closing offer
     // needs its own wording (never identified before), not RE_IDENTIFY's shared default text.
     val optionalIdentification = Transition.RequireSubJourney(
-        ReIdentifyJourney.toReach(
-            targetAcr = AcrLevel.LOA1,
-            wording = ReIdentifyState.Wording.OPTIONAL_IDENTIFICATION
-        ),
+        ReIdentifyJourney.offerOptionally(AcrLevel.LOA1),
         resumeWith = RegisterState.Closing,
         // Declining it finishes the registration instead of cancelling it.
         optional = true,

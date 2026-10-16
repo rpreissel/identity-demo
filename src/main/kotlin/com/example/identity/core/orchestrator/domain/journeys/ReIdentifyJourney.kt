@@ -24,9 +24,13 @@ object ReIdentifyJourney : Journey<ReIdentifyState> {
     override val startPoints = listOf(OnlyAsSubJourney)
     override val stateRoot = ReIdentifyState::class
 
-    /** A fresh identification to reach [targetAcr], asked first in [wording] (the default question if null). */
-    fun toReach(targetAcr: AcrLevel, wording: ReIdentifyState.Wording? = null): JourneyStart<*> =
-        JourneyStart(this, ReIdentifyState.OfferReIdent(targetAcr, wording))
+    /** A fresh identification because nothing else reaches [targetAcr]. */
+    fun toReach(targetAcr: AcrLevel): JourneyStart<*> =
+        JourneyStart(this, ReIdentifyState.OfferReIdent(targetAcr, ReIdentifyState.Kind.RECOVERY))
+
+    /** Identification as an optional extra for a never-identified account; request it as optional. */
+    fun offerOptionally(targetAcr: AcrLevel): JourneyStart<*> =
+        JourneyStart(this, ReIdentifyState.OfferReIdent(targetAcr, ReIdentifyState.Kind.OPTIONAL))
 
     override fun transition(state: ReIdentifyState, event: JourneyEvent, ctx: JourneyContext): Transition =
         when (state) {
@@ -49,5 +53,5 @@ object ReIdentifyJourney : Journey<ReIdentifyState> {
     /** Null when no identification tool can reach the target (anymore). */
     private fun offerIdentifying(offer: ReIdentifyState.OfferReIdent, ctx: JourneyContext): Transition? =
         CandidateTools.forReIdentification(offer.targetAcr, ctx).takeIf { it.isNotEmpty() }
-            ?.let { Transition.To(ReIdentifyState.Identifying(offer.targetAcr, Offer(it), wording = offer.wording)) }
+            ?.let { Transition.To(ReIdentifyState.Identifying(offer.targetAcr, Offer(it), kind = offer.kind)) }
 }
