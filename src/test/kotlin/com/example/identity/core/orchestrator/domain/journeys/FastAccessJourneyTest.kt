@@ -26,7 +26,7 @@ import io.kotest.matchers.types.shouldBeInstanceOf
  * Unit coverage of [FastAccessJourney]: the fallback chain into a login, plus [Enrolling] for the
  * case it reaches without identifying anyone (docs/04-orchestrierung.md, "FAST_ACCESS").
  * Identification is [RegisterJourney]'s journey, see [RegisterJourneyTest]. Which action a
- * completed tool yields is [AuthEnrollCoreTest]'s subject; the step after it is
+ * completed tool yields is [BookingTest]'s subject; the step after it is
  * [JourneyEvent.ActionCompleted] against a context that reflects the action.
  */
 class FastAccessJourneyTest : BehaviorSpec({
@@ -169,7 +169,7 @@ class FastAccessJourneyTest : BehaviorSpec({
         }
     }
 
-    // ENROLLMENT_FLOOR_ACR: a credential keeps the level it was enrolled under (ADR-5), so a session
+    // PathToRequiredLevel.NEW_METHOD_FLOOR: a credential keeps the level it was enrolled under (ADR-5), so a session
     // below loa2 may only enroll after a fresh identification (docs/journeys/fast-access.md).
     given("AuthChoice, the proof falls short of loa2 while enrollment tools are available") {
         val acc = account(method("sms", AcrLevel.LOA2))

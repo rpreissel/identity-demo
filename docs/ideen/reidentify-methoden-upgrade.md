@@ -61,7 +61,7 @@ Inhaber des Kontos selbst, und er hat gerade freiwillig einen stärkeren Nachwei
    sondern auch bei allen heutigen Aufrufern von `RE_IDENTIFY`:
    - `STEP_UP`,
    - `LOOKUP_LOGIN`,
-   - `AuthEnrollCore` bei `FAST_ACCESS` und `REGISTER`,
+   - `PathToRequiredLevel` bei `FAST_ACCESS` und `REGISTER`,
    - `RegisterEnrollFirstJourney`.
 
    Nach einer erfolgreichen Identifizierung prüft der Orchestrator, ob es aktive Verfahren mit
@@ -98,7 +98,7 @@ müsste:
 
 - `STEP_UP`,
 - `LOOKUP_LOGIN`,
-- `AuthEnrollCore`, das von `FAST_ACCESS` und `REGISTER` genutzt wird,
+- `PathToRequiredLevel`, das `FAST_ACCESS` und `REGISTER` nutzen,
 - `RegisterEnrollFirstJourney`,
 - der neue Knopf in der Verwaltung.
 

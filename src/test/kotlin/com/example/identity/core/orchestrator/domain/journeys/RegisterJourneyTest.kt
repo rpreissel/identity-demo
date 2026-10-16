@@ -33,7 +33,7 @@ import io.kotest.matchers.types.shouldBeInstanceOf
  * (docs/04-orchestrierung.md, "REGISTER"), through to the mandatory states that keep the next
  * login working. [AuthChoice]/[Enrolling] are shared with [FastAccessJourney], but this journey's
  * `transition` owns its own transitions around them, so they are covered here in full. Which
- * action a completed tool yields is [AuthEnrollCoreTest]'s subject.
+ * action a completed tool yields is [BookingTest]'s subject.
  */
 class RegisterJourneyTest : BehaviorSpec({
 
@@ -291,7 +291,7 @@ class RegisterJourneyTest : BehaviorSpec({
         }
     }
 
-    // ENROLLMENT_FLOOR_ACR (docs/journeys/register.md): below loa2 a new method needs a fresh identification first.
+    // PathToRequiredLevel.NEW_METHOD_FLOOR (docs/journeys/register.md): below loa2 a new method needs a fresh identification first.
     given("Enrolling, the session still below loa2 and enrollment tools available") {
         val acc = account(method("sms", AcrLevel.LOA1))
         val state = Enrolling(Offer(listOf(ToolId("enroll-password"))), emailObligation = false)

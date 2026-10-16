@@ -7,6 +7,8 @@ import com.example.identity.core.orchestrator.domain.JourneyFeatureFlag
 import com.example.identity.contract.tool_api.claims.AttributeType
 import com.example.identity.core.orchestrator.domain.journey.state.ReIdentifyState
 import com.example.identity.core.orchestrator.domain.journey.CandidateTools
+import com.example.identity.core.account.AccountProfile
+import com.example.identity.contract.tool_api.ToolId
 import com.example.identity.core.orchestrator.domain.journey.OpensAppChannel
 import com.example.identity.core.orchestrator.domain.journey.OpensWebChannel
 import com.example.identity.core.orchestrator.domain.journey.StartingAccount
@@ -37,13 +39,15 @@ object RegisterJourney : JourneyWithoutInput<RegisterState> {
 
     override fun initialState(ctx: JourneyContext): RegisterState = RegisterState.Start
 
+    private val toRequiredLevel = PathToRequiredLevel(afterIdentificationBackTo = RegisterState.Start)
+
     private val JourneyContext.enrollFirst get() = JourneyFeatureFlag.REGISTER_ENROLL_FIRST in featureFlags
 
     override fun transition(state: RegisterState, event: JourneyEvent, ctx: JourneyContext): Transition =
         when (state) {
             is RegisterState.Start -> when (event) {
-                // A RE_IDENTIFY sub-journey from offerEnrollment finished: re-check.
-                is JourneyEvent.SubJourneyFinished -> AuthEnrollCore.afterProof(ctx, resumeAtStart = RegisterState.Start)
+                // A RE_IDENTIFY sub-journey before a new method finished: re-check.
+                is JourneyEvent.SubJourneyFinished -> toRequiredLevel.nextAfterProof(ctx)
                 else -> if (ctx.enrollFirst) offerEmailFirst(ctx) else offerIdentification(ctx)
             }
 
@@ -60,10 +64,10 @@ object RegisterJourney : JourneyWithoutInput<RegisterState> {
 
             is AuthChoice -> when (event) {
                 // Nothing else provable is left: identification is the only way forward.
-                is JourneyEvent.OfferExhausted -> AuthEnrollCore.remainingAuthOr(ctx, event.declined) { offerIdentification(ctx) }
+                is JourneyEvent.OfferExhausted -> toRequiredLevel.nextWithout(event.declined, ctx) { offerIdentification(ctx) }
                 // No factor-kind or email obligation: a rediscovered, set-up account finishing here
                 // is an ordinary login, not a fresh registration.
-                else -> AuthEnrollCore.afterProof(ctx, resumeAtStart = RegisterState.Start)
+                else -> toRequiredLevel.nextAfterProof(ctx)
             }
 
             is DeviceLinkQuestion -> when (state.wording) {
@@ -153,22 +157,49 @@ object RegisterJourney : JourneyWithoutInput<RegisterState> {
         // not to a rediscovered account logging in (docs/04-orchestrierung.md #5).
         // emailObligation stays true: without an attesting tool confirmEmail yields nothing, and
         // the obligation is retried after enrollment.
-        return AuthEnrollCore.confirmEmail(account, ctx)
-            ?: AuthEnrollCore.offerEnrollment(account, ctx, emailObligation = true, resumeAtStart = RegisterState.Start)
+        return confirmEmail(account, ctx)
+            ?: toRequiredLevel.offerNewMethod(ctx, emailObligation = true)
     }
 
     /**
-     * Wraps [AuthEnrollCore.afterEnrollment] and intercepts only [Transition.Authenticated] to apply
-     * the factor-kind obligation ([RegisterState.SecondFactorKindObligation]). Since the shared code
-     * finishes only after the email obligation, this is checked last. "Enrollment zuerst" accepts a
-     * loa1 credential (no enrollment floor) and ends in [offerClosingIdentification].
+     * The confirmed address as the first mandatory step of a registration. It is account
+     * infrastructure that unlocks candidates (lookup tools, `enroll-password`), so it must come
+     * before the first enrollment offer. `null` when already confirmed or no attesting tool is
+     * available, so the caller does not dead-end.
+     */
+    private fun confirmEmail(account: AccountProfile, ctx: JourneyContext): Transition? {
+        if (account.emailConfirmed) return null
+        return CandidateTools.forAttestation(AttributeType.EMAIL, ctx).takeIf { it.isNotEmpty() }
+            ?.let { Transition.To(RegisterState.ConfirmingEmail(Offer(it))) }
+    }
+
+    /**
+     * The next step on [toRequiredLevel], with REGISTER's own obligations around it. [emailObligation]
+     * is normally discharged before any enrollment ([confirmEmail]); it is re-checked here for the
+     * case that no attesting tool was available back then. Once the level is reached, the factor-kind
+     * obligation ([RegisterState.SecondFactorKindObligation]) comes last. "Enrollment zuerst" accepts
+     * a loa1 credential (no identification before enrolling) and ends in [offerClosingIdentification].
      */
     private fun afterEnrollment(ctx: JourneyContext, emailObligation: Boolean): Transition {
-        val base = AuthEnrollCore.afterEnrollment(ctx, emailObligation, resumeAtStart = RegisterState.Start, enforceEnrollmentFloor = !ctx.enrollFirst)
-        if (base != Transition.Authenticated) return base
-        val candidates = AuthEnrollCore.secondFactorKindCandidates(ctx.requireAccount(), ctx)
+        if (emailObligation) confirmEmail(ctx.requireAccount(), ctx)?.let { return it }
+        val next = toRequiredLevel.nextAfterEnrollment(ctx, identifyBeforeEnrolling = !ctx.enrollFirst, emailObligation = emailObligation)
+        if (next != Transition.Authenticated) return next
+        val candidates = secondFactorKindCandidates(ctx.requireAccount(), ctx)
         if (candidates.isNotEmpty()) return Transition.To(RegisterState.SecondFactorKindObligation(Offer(candidates)))
-        return if (ctx.enrollFirst) offerClosingIdentification(ctx) else base
+        return if (ctx.enrollFirst) offerClosingIdentification(ctx) else next
+    }
+
+    /**
+     * The last REGISTER obligation (docs/04-orchestrierung.md #5): a run must not end below loa2,
+     * which its own method management needs. While loa2 is out of reach and the active methods
+     * cover fewer than two factor kinds, every enrollment adding a missing kind is offered. Each
+     * one adds a kind, so the covered set only grows and the obligation cannot repeat forever.
+     */
+    private fun secondFactorKindCandidates(account: AccountProfile, ctx: JourneyContext): List<ToolId> {
+        if (ctx canReach PathToRequiredLevel.NEW_METHOD_FLOOR) return emptyList()
+        val covered = CandidateTools.factorKindsOf(account, ctx)
+        if (covered.size >= 2) return emptyList()
+        return CandidateTools.forMissingFactorKind(account, covered, ctx)
     }
 
     /**

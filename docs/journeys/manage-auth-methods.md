@@ -115,7 +115,7 @@ das Entfernen des Passworts, wenn nur SMS bleiben soll. Für die nächste Verwal
 dann wieder `loa2`. Der vorgesehene Weg dorthin ist die Re-Identifizierung (`ident-fsc`, eID, Nect,
 siehe `AuthPolicy.reIdentCandidates`).
 
-Die Registrierung verlangt dagegen `loa2` (`AuthEnrollCore.ENROLLMENT_FLOOR_ACR`), aber aus einem
+Die Registrierung verlangt dagegen `loa2` (`PathToRequiredLevel.NEW_METHOD_FLOOR`), aber aus einem
 anderen Grund: Neue Verfahren werden nur in einer Sitzung mit mindestens `loa2` eingerichtet. Die
 beiden Schwellen meinen also verschiedene Dinge und widersprechen sich nicht.
 

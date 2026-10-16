@@ -302,7 +302,11 @@ behandeln alle Zustände gleich: Er bringt die Journey weiter. Verschieden ist n
 - In einem **Ausweichzustand** führt Ablehnen weiter, und zwar zum nächsten, aufwendigeren Weg.
   Mehrere solche Zustände hintereinander bilden eine **Ausweichkette** vom bequemsten zum
   aufwendigsten Weg. So ist `FAST_ACCESS` aufgebaut. Gibt es nichts Aufwendigeres mehr, endet die
-  Journey.
+  Journey. Den **Weg zum verlangten Niveau**, den `FAST_ACCESS` und `REGISTER` teilen, hält jede
+  der beiden als `PathToRequiredLevel`: erst die Verfahren des Kontos (`AuthChoice`), dann ein
+  neues Verfahren (`Enrolling`), zuletzt eine frische Identifizierung. Im Zustandsautomaten liest
+  sich das als `toRequiredLevel.nextAfterProof(ctx)`, `nextAfterEnrollment(ctx)` und
+  `nextWithout(declined, ctx) { … }`.
 - In einem **Pflichtzustand** führt Ablehnen nicht weiter. Die Pflicht bleibt bestehen, und das
   volle Angebot kommt zurück, auch das gerade verworfene Tool. Nur wer die Pflicht erfüllt, kommt
   weiter.
@@ -548,8 +552,8 @@ Anmeldeverfahren einrichten“ (dort ist `ConfirmingEmail` der erste Schritt,
 [register-enroll-first.md](journeys/register-enroll-first.md)).
 
 Ist kein Tool zum Bestätigen verfügbar, weil der Betreiber es gesperrt hat, wird der Schritt
-übersprungen. Die Pflicht bleibt dann offen. Sie wird in der Kette der Einrichtungsschritte
-(`AuthEnrollCore.afterEnrollment`) erneut angeboten. Dafür hält `Enrolling.emailObligation` den
+übersprungen. Die Pflicht bleibt dann offen. Sie wird nach jedem Einrichtungsschritt
+(`RegisterJourney.afterEnrollment`) erneut angeboten. Dafür hält `Enrolling.emailObligation` den
 Vermerk fest.
 
 Für wen eine Pflicht gilt, hängt davon ab, auf welchem Weg der Zustand erreicht wurde. Die Pflicht
@@ -579,7 +583,7 @@ Die Bestätigung der E-Mail-Adresse ist kein Einrichtungsschritt
 ([ADR-17](adr/ADR-017-adresse-bestaetigen-und-e-mail-login-einrichten-sind.md)). Deshalb gilt
 die Pflicht in **beiden** Kanälen und auch im Experiment „Erst Anmeldeverfahren einrichten“
 (derselbe Zustand `SecondFactorKindObligation`). `RegisterJourney` setzt dafür am Ergebnis von
-`AuthEnrollCore.afterEnrollment` an. Anders als `AuthChoice` und `Enrolling` gehört dieser Zustand
+`PathToRequiredLevel.nextAfterEnrollment` an. Anders als `AuthChoice` und `Enrolling` gehört dieser Zustand
 allein zu `RegisterState`.
 
 **Wozu sie da ist:** Wer seine eigenen Verfahren verwalten will, braucht `loa2`

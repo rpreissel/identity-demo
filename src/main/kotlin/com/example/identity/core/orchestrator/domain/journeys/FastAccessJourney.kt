@@ -23,28 +23,29 @@ object FastAccessJourney : JourneyWithoutInput<FastAccessState> {
     override val startPoints = listOf(OpensAppChannel(startsWith = StartingAccount.LINKED_TO_DEVICE, onSuccess = DeviceLink.LINK_WITHOUT_ASKING))
     override val stateRoots = listOf(FastAccessState::class)
 
+    private val toRequiredLevel = PathToRequiredLevel(afterIdentificationBackTo = FastAccessState.Start)
+
     override fun initialState(ctx: JourneyContext): FastAccessState = FastAccessState.Start
 
     override fun transition(state: FastAccessState, event: JourneyEvent, ctx: JourneyContext): Transition =
         when (state) {
             is FastAccessState.Start -> when (event) {
                 // Back from REGISTER or RE_IDENTIFY: re-check whether that already closes the gap before offering again.
-                is JourneyEvent.SubJourneyFinished -> AuthEnrollCore.afterProof(ctx, resumeAtStart = FastAccessState.Start)
+                is JourneyEvent.SubJourneyFinished -> toRequiredLevel.nextAfterProof(ctx)
                 else -> firstOffer(ctx)
             }
             is FastAccessState.PreferredAuth -> when (event) {
-                is JourneyEvent.Abandoned -> AuthEnrollCore.remainingAuthOr(ctx, declined = setOf(state.toolId)) { requireRegister() }
-                else -> AuthEnrollCore.afterProof(ctx, resumeAtStart = FastAccessState.Start)
+                is JourneyEvent.Abandoned -> toRequiredLevel.nextWithout(setOf(state.toolId), ctx) { requireRegister() }
+                else -> toRequiredLevel.nextAfterProof(ctx)
             }
 
             is AuthChoice -> when (event) {
                 // Nothing else provable is left on this device: hand off to a fresh identification.
-                is JourneyEvent.OfferExhausted -> AuthEnrollCore.remainingAuthOr(ctx, event.declined) { requireRegister() }
-                else -> AuthEnrollCore.afterProof(ctx, resumeAtStart = FastAccessState.Start)
+                is JourneyEvent.OfferExhausted -> toRequiredLevel.nextWithout(event.declined, ctx) { requireRegister() }
+                else -> toRequiredLevel.nextAfterProof(ctx)
             }
 
-            // FAST_ACCESS never sets emailObligation, so this never reaches ConfirmingEmail.
-            is Enrolling -> AuthEnrollCore.afterEnrollment(ctx, state.emailObligation, resumeAtStart = FastAccessState.Start)
+            is Enrolling -> toRequiredLevel.nextAfterEnrollment(ctx)
         }
 
     // Offers -------------------------------------------------------------------

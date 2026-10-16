@@ -13,7 +13,7 @@ Ablauf, den andere Journeys starten. Diese Journeys fordern sie an:
 - [`FAST_ACCESS`](fast-access.md), [`LOOKUP_LOGIN`](lookup-login.md) und [`STEP_UP`](step-up.md).
 - [`WEB_SELECT_METHOD`](web-select-method.md) beim Step-up im Web-Kanal, wenn kein Verfahren des
   Kontos das fehlende Niveau liefern kann.
-- [`REGISTER`](register.md), und zwar über `AuthEnrollCore.offerEnrollment`, wenn ein neues
+- [`REGISTER`](register.md), und zwar über `PathToRequiredLevel.offerNewMethod`, wenn ein neues
   Verfahren erst nach einer erneuten Identifizierung eingerichtet werden darf.
 - Das Experiment „Erst Anmeldeverfahren einrichten“ (`RegisterJourney`, siehe
   [register-enroll-first.md](register-enroll-first.md)).
