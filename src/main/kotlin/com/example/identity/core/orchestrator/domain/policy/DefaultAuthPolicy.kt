@@ -78,23 +78,21 @@ class DefaultAuthPolicy(
         val active = account.activeAuthenticationMethods
         if (active.isEmpty()) return Reachability.NotReachable(UnreachableReason.NoActiveMethod)
 
-        val provable = active.mapNotNull { m -> descriptorFor(m.method)?.let { m to it } }
-        val methodNames = provable.map { (_, d) -> d.method }.distinct()
-        val factorTypesUnion = provable.flatMap { (_, d) -> d.factorTypes }.toSet()
-        val bestAcr = provable.maxOfOrNull { (m, d) -> cappedAcr(m, d) } ?: AcrLevel.NONE
-        val maxEnrolledUnderAcr = active.maxOfOrNull { it.enrolledUnderAcr } ?: AcrLevel.NONE
-        val effectiveAcr = combinedAcr(bestAcr, methodNames.size, factorTypesUnion, maxEnrolledUnderAcr)
-
-        val levelOk = effectiveAcr >= requiredAcr
-        val mfaOk = !requiresMfa(requiredAcr) || factorTypesUnion.size >= 2
+        // What the account would have proven after a login with every provable method: priced
+        // exactly like a session's evidence, so "can reach" and "has reached" never disagree.
+        val wouldProve = SessionEvidence(active.mapNotNull { m -> descriptorFor(m.method)?.let { asProvenNow(m, it) } })
+        val levelOk = authenticatorAssuranceLevel(wouldProve) >= requiredAcr
+        val mfaOk = !requiresMfa(requiredAcr) || wouldProve.factorTypes.size >= 2
         if (levelOk && mfaOk) return Reachability.Reachable
 
+        val methodNames = wouldProve.amr.map { it.value }
         // Factor-type coverage alone, not the number of methods: a single method covering two
         // factor types (e.g. `device`) is not missing "a method of another factor type". Its limit
         // is the enrolledUnderAcr cap below.
-        if (factorTypesUnion.size < 2) {
-            return Reachability.NotReachable(UnreachableReason.SingleFactorType(methodNames, factorTypesUnion))
+        if (wouldProve.factorTypes.size < 2) {
+            return Reachability.NotReachable(UnreachableReason.SingleFactorType(methodNames, wouldProve.factorTypes))
         }
+        val maxEnrolledUnderAcr = wouldProve.methods.maxOfOrNull { it.enrolledUnderAcr } ?: AcrLevel.NONE
         return Reachability.NotReachable(
             if (methodNames.size >= 2) UnreachableReason.CombinationCapped(maxEnrolledUnderAcr)
             else UnreachableReason.SingleMethodCapped(methodNames.first(), maxEnrolledUnderAcr)
@@ -140,13 +138,8 @@ class DefaultAuthPolicy(
 
         return eligible.filter { (m, _) -> m.method !in usedMethods }.mapNotNull { (m, d) ->
             // The evidence as it would be if this candidate were also proven.
-            val projected = SessionEvidence(
-                evidence.methods + MethodEvidence(
-                    MethodName(m.method), cappedAcr(m, d), m.enrolledUnderAcr, d.factorTypes,
-                    amrSourceId = "simulation", provenAt = clock.instant()
-                ),
-            )
-            val helpsLevel = applyMfaBump(baseAcr(projected.methods), projected) >= requiredAcr
+            val projected = SessionEvidence(evidence.methods + asProvenNow(m, d))
+            val helpsLevel = authenticatorAssuranceLevel(projected) >= requiredAcr
             val helpsMfa = !singleMethodSuffices && (d.factorTypes - evidence.factorTypes).isNotEmpty()
             d.toolId.takeIf { helpsLevel || helpsMfa }
         }.distinct() // several instances of one method (devices) offer its AUTH tool once
@@ -176,27 +169,26 @@ class DefaultAuthPolicy(
     private fun cappedAcr(method: AuthMethodView, descriptor: Tool): AcrLevel =
         minOf(method.enrolledUnderAcr, descriptor.maxAcr)
 
-    /**
-     * The MFA bump over one session's evidence, capped by the highest [MethodEvidence.enrolledUnderAcr]
-     * among it. Does not filter by axis: the caller must pass authenticator evidence only, or an
-     * identification could buy MFA credit it already priced into its own loa. A method enrolled under
-     * nothing adds nothing to the cap (docs/05-api.md Abschnitt 3b).
-     */
-    private fun applyMfaBump(base: AcrLevel, evidence: SessionEvidence): AcrLevel {
-        val distinctMethods = evidence.methods.map { it.method }.distinct().size
-        val maxEnrolledUnderAcr = evidence.methods.maxOfOrNull { it.enrolledUnderAcr } ?: AcrLevel.NONE
-        return combinedAcr(base, distinctMethods, evidence.factorTypes, maxEnrolledUnderAcr)
-    }
+    /** The evidence proving [method] with its auth tool would leave right now - what a candidate or a future login is priced on. */
+    private fun asProvenNow(method: AuthMethodView, descriptor: Tool): MethodEvidence = MethodEvidence(
+        MethodName(method.method), cappedAcr(method, descriptor), method.enrolledUnderAcr, descriptor.factorTypes,
+        amrSourceId = "simulation", provenAt = clock.instant()
+    )
 
     /**
-     * The combination rule: two or more methods covering two or more factor types earn one tier
-     * above [base], capped by [maxEnrolledUnderAcr] and by [NIST_COMBINATION_CEILING].
+     * The MFA bump over one session's evidence: two or more methods covering two or more factor
+     * types earn one tier above [base], capped by the highest [MethodEvidence.enrolledUnderAcr]
+     * among them and by [NIST_COMBINATION_CEILING]. Does not filter by axis: the caller must pass
+     * authenticator evidence only, or an identification could buy MFA credit it already priced into
+     * its own loa. A method enrolled under nothing adds nothing to the cap (docs/05-api.md Abschnitt 3b).
      *
      * The ceiling exists because NIST 800-63B allows combining single-factor authenticators only
      * up to AAL2. AAL3 needs a specific authenticator technology, not two strong things combined.
      */
-    private fun combinedAcr(base: AcrLevel, distinctMethods: Int, factorTypesUnion: Set<FactorType>, maxEnrolledUnderAcr: AcrLevel): AcrLevel {
-        if (distinctMethods < 2 || factorTypesUnion.size < 2) return base
+    private fun applyMfaBump(base: AcrLevel, evidence: SessionEvidence): AcrLevel {
+        val distinctMethods = evidence.methods.map { it.method }.distinct().size
+        if (distinctMethods < 2 || evidence.factorTypes.size < 2) return base
+        val maxEnrolledUnderAcr = evidence.methods.maxOfOrNull { it.enrolledUnderAcr } ?: AcrLevel.NONE
         val bumped = minOf(AcrLevels.bump(base), maxEnrolledUnderAcr)
         return maxOf(base, minOf(bumped, NIST_COMBINATION_CEILING))
     }
@@ -218,7 +210,7 @@ class DefaultAuthPolicy(
 
         private val MFA_FROM_ACR = AcrLevel.LOA3
 
-        /** The highest level the combination bump may produce (see [combinedAcr]). */
+        /** The highest level the combination bump may produce (see [applyMfaBump]). */
         private val NIST_COMBINATION_CEILING = AcrLevel.LOA2
     }
 }
