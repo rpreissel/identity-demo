@@ -23,16 +23,7 @@ sealed interface StepUpState : JourneyState {
 
     data class Start(override val goal: Goal) : StepUpState, ToolFreeState
 
-    data class AuthChoice(
-        override val goal: Goal,
-        override val offer: Offer,
-        /**
-         * True once this run already proved one authenticator-axis factor. The text then says that
-         * a factor of another kind is needed; two identical screens in a row read as being stuck.
-         * Set once when the offer is built.
-         */
-        val additionalFactorRound: Boolean = false
-    ) : StepUpState, OfferingState {
+    data class AuthChoice(override val goal: Goal, override val offer: Offer) : StepUpState, OfferingState {
         override fun withOffer(offer: Offer) = copy(offer = offer)
         override val declinePolicy: DeclinePolicy get() = DeclinePolicy.FALLBACK
         override val screen: Screen get() = Screen.SELECT_AUTH_METHOD
@@ -48,7 +39,9 @@ sealed interface StepUpState : JourneyState {
                 )
                 ProofPurpose.DELETE_ACCOUNT, ProofPurpose.MANAGE_METHODS, null -> Text("Die angeforderte Aktion erfordert ein höheres Sicherheitsniveau. Bitte bestätigen Sie Ihre Identität mit einem weiteren Verfahren.")
             }
-            return if (additionalFactorRound) {
+            // Something already counts toward the goal: say that a factor of another kind is needed,
+            // or a second identical screen in a row reads as being stuck.
+            return if (goal.startingAcr > AcrLevel.NONE) {
                 Text(
                     "{anlass} Das eben genutzte Verfahren zählt bereits. Wählen Sie jetzt eines anderer Art, " +
                         "zum Beispiel Passwort statt SMS.",

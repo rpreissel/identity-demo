@@ -40,9 +40,9 @@ Start bis zum Ende unverändert. Es hat drei Felder:
   ob eine erneute Identifizierung als Ausweg erlaubt ist. Ohne `purpose`, beim einfachen Step-up
   des Kanals, gilt der allgemeine Text, und der Ausweg ist erlaubt.
 
-`AuthChoice` enthält außerdem das Angebot, die bisherigen Ablehnungen und `additionalFactorRound`.
-Liegt auf dem Kanal schon der Nachweis eines Anmeldeverfahrens vor, sagt der Text dem Nutzer, dass
-jetzt ein Verfahren anderer Art nötig ist.
+`AuthChoice` enthält außerdem das Angebot und die bisherigen Ablehnungen. Liegt `startingAcr` über
+`NONE`, zählt schon ein Nachweis, und der Text sagt dem Nutzer, dass jetzt ein Verfahren anderer
+Art nötig ist.
 
 **Ohne erneute Identifizierung.** `CONFIRM_PEER_LOGIN` fordert seinen Step-up mit dem Zweck
 `PEER_LOGIN` an, der keine erneute Identifizierung zulässt. Dann entfällt der Weg über `RE_IDENTIFY` ganz. Reicht kein

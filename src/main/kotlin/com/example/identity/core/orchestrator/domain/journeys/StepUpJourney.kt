@@ -10,11 +10,10 @@ import com.example.identity.core.orchestrator.domain.journey.AccountJourneyConte
 import com.example.identity.core.orchestrator.domain.journey.JourneyEvent
 import com.example.identity.core.orchestrator.domain.journey.notExpectedIn
 import com.example.identity.core.orchestrator.domain.journey.Transition
-import com.example.identity.core.orchestrator.domain.journey.state.Offer
+import com.example.identity.core.orchestrator.domain.journey.offer
 import com.example.identity.core.orchestrator.domain.journey.toAuthAbortMessage
 import com.example.identity.core.orchestrator.domain.journey.state.StepUpState
 import com.example.identity.core.orchestrator.domain.journey.state.StepUpState.Goal
-import com.example.identity.core.orchestrator.domain.policy.EvidenceAxis
 
 /**
  * Raise the level of an already authenticated session (docs/journeys/step-up.md). When no active
@@ -49,16 +48,9 @@ object StepUpJourney : AccountJourney<StepUpState> {
         if (ctx hasReached goal.targetAcr) Transition.Authenticated
         else offerAuth(goal, ctx)
 
-    private fun offerAuth(goal: Goal, ctx: AccountJourneyContext): Transition {
-        // Authenticator evidence already on the channel means this offer asks for an additional
-        // factor (StepUpState.AuthChoice.additionalFactorRound).
-        val additionalFactorRound = ctx.evidence.methods.any { it.axis == EvidenceAxis.AUTHENTICATOR }
-        val candidates = ctx.authCandidates(goal.targetAcr)
-        if (candidates.isNotEmpty()) {
-            return Transition.To(StepUpState.AuthChoice(goal, Offer(candidates), additionalFactorRound = additionalFactorRound))
-        }
-        return offerReIdentOrGiveUp(goal, ctx, whenNone = cannotReach(goal, ctx))
-    }
+    private fun offerAuth(goal: Goal, ctx: AccountJourneyContext): Transition =
+        offer(ctx.authCandidates(goal.targetAcr)) { StepUpState.AuthChoice(goal, it) }
+            ?: offerReIdentOrGiveUp(goal, ctx, whenNone = cannotReach(goal, ctx))
 
     /** Nothing gets the account to [Goal.targetAcr]: say why. */
     private fun cannotReach(goal: Goal, ctx: AccountJourneyContext): Transition =
