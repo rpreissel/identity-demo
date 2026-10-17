@@ -14,7 +14,7 @@ sealed interface FastAccessState : JourneyState {
     data object Start : FastAccessState, ToolFreeState
 
     /** Linked device with a matching device method: an offer of exactly that one, before any choice. */
-    data class PreferredAuth(override val offer: Offer) : FastAccessState, OfferingState {
+    data class PreferredAuth(override val offer: Offer) : FastAccessState, DirectOffer {
         override fun withOffer(offer: Offer) = copy(offer = offer)
         override val declinePolicy: DeclinePolicy get() = DeclinePolicy.FALLBACK
         override val screen: Screen get() = Screen.SELECT_AUTH_METHOD

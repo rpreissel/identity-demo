@@ -137,6 +137,13 @@ sealed interface OfferingState : JourneyState {
 }
 
 /**
+ * An offer whose one tool starts at once, before any choice (FAST_ACCESS's device key). There is no
+ * selection page behind it to go back to, so "Zurück" declines the tool, and the offer's
+ * [DeclinePolicy] decides what follows.
+ */
+sealed interface DirectOffer : OfferingState
+
+/**
  * A state that runs no tool: a decision point, a parked wish or a yes/no prompt. Nothing to
  * activate, and nothing to remember about a running tool.
  */

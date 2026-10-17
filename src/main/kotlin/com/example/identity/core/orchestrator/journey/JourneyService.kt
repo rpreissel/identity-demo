@@ -22,6 +22,7 @@ import com.example.identity.contract.texts.Text
 import com.example.identity.core.account.AccountService
 import com.example.identity.core.orchestrator.domain.OrchestratorException
 import com.example.identity.core.orchestrator.domain.journey.state.AnswerableState
+import com.example.identity.core.orchestrator.domain.journey.state.DirectOffer
 import com.example.identity.core.orchestrator.domain.journey.state.OfferingState
 import com.example.identity.core.orchestrator.domain.journey.state.JourneyState
 import com.example.identity.core.orchestrator.domain.journey.state.ToolRef
@@ -318,14 +319,15 @@ class JourneyService(
     /**
      * "Zurück": the running tool ends without being declined, and the selection page returns with
      * every candidate, the abandoned one included. Whoever goes back wants to choose again. The
-     * journey is not asked. Only an [OfferingState] has a selection page; elsewhere this is [abandon].
+     * journey is not asked. A [DirectOffer] has no selection page behind it; there, as outside an
+     * offer, this is [abandon].
      */
     fun back(running: RunningJourney, live: LiveChannel, tool: Tool): Step {
         keepSessionAlive(live)
         val journey = running.entity
         val channel = live.session
         val state = codec.read(journey)
-        if (state !is OfferingState) return abandon(running, live, tool)
+        if (state !is OfferingState || state is DirectOffer) return abandon(running, live, tool)
         val cleared = state.withOffer(state.offer.withActive(null))
         codec.write(journey, cleared)
         journeyRepository.save(journey)

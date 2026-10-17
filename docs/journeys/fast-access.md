@@ -63,7 +63,9 @@ stateDiagram-v2
 ```
 
 **Was die Zustände enthalten.** Alle drei enthalten ein Angebot und die bisherigen Ablehnungen;
-bei `PreferredAuth` besteht es aus genau dem einen vorgeschlagenen Tool. `AuthChoice` und
+bei `PreferredAuth` besteht es aus genau dem einen vorgeschlagenen Tool. Das startet sofort, ohne
+Auswahlseite davor (`DirectOffer`). „Zurück“ lehnt es deshalb ab, wie „Anderes Verfahren“, und die
+Journey bietet die übrigen Verfahren des Kontos an. `AuthChoice` und
 `Enrolling` nutzt `FAST_ACCESS` gemeinsam mit `RegisterState` (siehe [`REGISTER`](register.md)).
 
 `Enrolling` hat zusätzlich das Feld `then`. `FAST_ACCESS` lässt es auf `AfterEnrolling.NEXT_STEP`:

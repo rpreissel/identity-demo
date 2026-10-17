@@ -212,6 +212,24 @@ class DeviceBindingIntegrationTest : IntegrationTestSupport() {
                     afterCancel.next() shouldBe mapOf("type" to "tool", "toolId" to "auth-device", "step" to "auth")
                 }
             }
+
+            `when`("a fresh channel goes back from auth-device") {
+                val channelSessionId = identifyAndConfirmEmail()
+                enrollSms(channelSessionId)
+                enrollPassword(channelSessionId)
+                post("/orchestrator/api/v1/channels/$channelSessionId/enrollments")
+                enrollDevice(channelSessionId)
+
+                val newChannelSessionId = post("/orchestrator/api/v1/app/channels").channel()["channelSessionId"] as String
+                val toolSessionId = post("/tools/api/auth-device/v1?channel=$newChannelSessionId").nextRaw()["toolSessionId"] as String
+                val afterBack = post("/tools/api/auth-device/v1/$toolSessionId/back")
+
+                then("there is no selection page behind the device key, so going back declines it like 'Anderes Verfahren'") {
+                    afterBack.next() shouldBe mapOf("type" to "orchestrator", "context" to "auth", "step" to "selectMethod")
+                    @Suppress("UNCHECKED_CAST")
+                    (afterBack.stepData()["options"] as List<String>) shouldContainExactlyInAnyOrder listOf("auth-sms", "auth-password")
+                }
+            }
         }
     }
 }
