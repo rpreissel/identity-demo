@@ -11,7 +11,7 @@ jackson2-boot = "2.21.7"
 spring-modulith = "2.1.1"
 dependency-management = "1.1.7"
 springdoc-openapi = "3.1.1"
-kotest = "6.2.5"
+kotest = "6.2.6"
 # Nur Tests: TextCatalog liest die Nutzertexte aus den kompilierten Klassen.
 asm = "9.9.1"
 # Architekturregeln der Keycloak-Erweiterung; dieselbe Fassung, die Spring Modulith dem Hauptprojekt mitbringt.
@@ -43,7 +43,7 @@ resteasy = "6.2.16.Final"
 jakarta-ws-rs = "3.1.0"
 zxing = "3.5.3"
 jsr305 = "3.0.2"
-junit = "6.0.3"
+junit = "6.1.3"
 
 [plugins]
 spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }
